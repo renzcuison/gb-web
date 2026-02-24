@@ -1,4 +1,3 @@
-Set-Content README.md @"
 # GreatBuy Originals Web App | IMS to E-commerce Website
 
 A high-performance Inventory Management System (IMS) integrated with an E-commerce storefront. Built with the "Modern Monolith" approach for maximum development efficiency.
@@ -63,8 +62,7 @@ A high-performance Inventory Management System (IMS) integrated with an E-commer
 
 ## Features
 - [x] Modern Monolith Architecture (Inertia.js)
-- [ ] Product CRUD & Inventory Tracking
-- [ ] Real-time Stock Syncing (Laravel Reverb)
-- [ ] Responsive Admin Dashboard
-- [ ] E-commerce Storefront Integration
-"@
+- [x] Product CRUD & Inventory Tracking
+- [x] Real-time Stock Syncing (Laravel Reverb)
+- [x] Responsive Admin Dashboard
+- [x] E-commerce Storefront Integration
