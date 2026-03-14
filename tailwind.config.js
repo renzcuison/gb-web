@@ -13,8 +13,13 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['"Inter"', ...defaultTheme.fontFamily.sans],
+                display: ['"Public Sans"', 'sans-serif'],
+                logo: ['"Libre Caslon Display"', 'serif'],
             },
+            letterSpacing: {
+                tightest: '-.03em',
+            }
         },
     },
 

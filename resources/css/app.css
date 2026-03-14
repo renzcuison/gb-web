@@ -1,3 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@layer base {
+    body {
+        @apply font-sans antialiased text-gray-900 bg-[#F3F4F6];
+    }
+
+    h1, h2, h3 {
+        @apply font-display font-extrabold tracking-tight;
+    }
+
+    /* Standardizes how prices look across the app */
+    .price-tag {
+        @apply font-sans font-bold tabular-nums tracking-tighter;
+    }
+}
