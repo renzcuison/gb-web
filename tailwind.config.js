@@ -9,7 +9,11 @@ export default {
         './resources/views/**/*.blade.php',
         './resources/js/**/*.vue',
     ],
-
+    safelist: [
+        {
+            pattern: /slide-up-(enter|leave)-(active|from|to)/,
+        },
+    ],
     theme: {
         extend: {
             fontFamily: {

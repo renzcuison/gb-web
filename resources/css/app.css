@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 @layer base {
     body {
         @apply font-sans antialiased text-gray-900 bg-[#F3F4F6];
@@ -9,9 +10,37 @@
     h1, h2, h3 {
         @apply font-display font-extrabold tracking-tight;
     }
+}
 
-    /* Standardizes how prices look across the app */
+@layer components {
     .price-tag {
         @apply font-sans font-bold tabular-nums tracking-tighter;
+    }
+
+    .slide-up-enter-active,
+    .slide-up-leave-active {
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .slide-up-enter-from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    .slide-up-leave-to {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    .ui-label {
+        @apply text-xs font-normal text-black/80 transition-colors duration-300;
+    }
+
+    .ui-label:hover {
+        @apply text-black;
+    }
+
+    .ui-label-caps {
+        @apply ui-label uppercase tracking-[0.1em];
     }
 }
