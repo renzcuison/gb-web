@@ -10,10 +10,10 @@ import MegaMenu from './MegaMenu.vue';
 const isMobileMenuOpen = ref(false);
 
 const navItems = [
-    { name: 'New Arrivals', slug: 'new-arrivals', children: ['This Week', 'Sustainability', 'Collaborations'] },
     { name: 'Women', slug: 'women', children: ['New Arrivals', 'Shoes', 'Clothing'] },
     { name: 'Men', slug: 'men', children: ['New Arrivals', 'Shoes', 'Clothing'] },
     { name: 'Accessories', slug: 'accessories', children: ['Bags', 'Hats', 'Watches'] },
+    { name: 'New Arrivals', slug: 'new-arrivals', children: ['This Week', 'Sustainability', 'Collaborations'] }
 ];
 </script>
 
