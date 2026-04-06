@@ -5,6 +5,7 @@ import Header from '@/Pages/Storefront/Header/Index.vue';
 import Hero from '@/Pages/Storefront/Hero.vue';
 import onDevelopment from '@/Pages/Storefront/onDevelopment.vue';
 import NewArrivals from '@/Pages/Storefront/NewArrivals.vue';
+import DiscoveryBanner from '@/Pages/Storefront/Partials/DiscoveryBanner.vue';
 
 defineProps({
     products: Object
@@ -25,6 +26,7 @@ defineProps({
 
             <NewArrivals />
 
+            <DiscoveryBanner />
             <onDevelopment />
         </main>
     </div>
