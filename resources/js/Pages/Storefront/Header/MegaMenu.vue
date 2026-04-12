@@ -18,7 +18,7 @@ const getProductData = (slug, index) => {
             { label: 'Trending', name: 'Silk Blouse', description: 'Relaxed Silhouette / Ivory', price: '2800', img: 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?q=80&w=600', imgHover: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?q=80&w=600' },
             { label: 'Collections', name: 'Pleated Dress', description: 'A-Line / Forest Green', price: '4100', img: 'https://images.unsplash.com/photo-1581044777550-4cfa60707c03?q=80&w=600', imgHover: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=600' }
         ],
-        'accessories': [
+        'kids': [
             { label: 'Featured', name: 'Minimalist Watch', description: 'Silver Case / Black Strap', price: '8500', img: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=600', imgHover: 'https://images.unsplash.com/photo-1508057198894-247b23fe5ade?q=80&w=600' },
             { label: 'Trending', name: 'Leather Tote', description: 'Full Grain / Cognac', price: '12000', img: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?q=80&w=600', imgHover: 'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?q=80&w=600' },
             { label: 'Collections', name: 'Horizon Shades', description: 'Polarized / Matte Black', price: '6400', img: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?q=80&w=600', imgHover: 'https://images.unsplash.com/photo-1577803645773-f96470509666?q=80&w=600' }

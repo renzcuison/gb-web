@@ -27,12 +27,12 @@ const scroll = (direction) => {
         <div class="flex flex-col space-y-6">
             <div class="flex flex-col space-y-0.5">
                 <span v-if="subtitle"
-                    class="text-[12px] uppercase tracking-[0.25em] text-zinc-400 font-bold leading-none">{{ subtitle
+                    class="text-[12px] uppercase tracking-[0.4em] text-zinc-400 font-bold leading-none">{{ subtitle
                     }}</span>
 
                 <div class="flex items-baseline justify-between">
                     <div class="flex items-baseline space-x-6">
-                        <h2 class="text-xl sm:text-2xl uppercase tracking-wider text-zinc-900 font-bold leading-none">
+                        <h2 class="text-xl sm:text-2xl uppercase tracking-wide text-zinc-900 font-bold leading-none">
                             {{ title }}
                         </h2>
                         <a href="#"

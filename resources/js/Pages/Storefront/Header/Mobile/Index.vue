@@ -8,7 +8,7 @@ import MobileMenuTray from './Tray.vue';
 
 const props = defineProps({
     isOpen: Boolean,
-    navItems: Array
+    navItems: Array,
 });
 
 const emit = defineEmits(['close']);

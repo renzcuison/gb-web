@@ -12,23 +12,23 @@ const isMobileMenuOpen = ref(false);
 const navItems = [
     { name: 'Women', slug: 'women', children: ['New Arrivals', 'Shoes', 'Clothing'] },
     { name: 'Men', slug: 'men', children: ['New Arrivals', 'Shoes', 'Clothing'] },
-    { name: 'Accessories', slug: 'accessories', children: ['Bags', 'Hats', 'Watches'] },
+    { name: 'Kids', slug: 'kid', children: ['New Arrivals', 'Shoes', 'Clothing'] },
     { name: 'New Arrivals', slug: 'new-arrivals', children: ['This Week', 'Sustainability', 'Collaborations'] }
 ];
 </script>
 
 <template>
-    <header class="sticky top-0 bg-white z-50 border-b border-zinc-100">
+    <header class="sticky top-0 bg-white z-50 transition-all duration-300">
         <div class="max-w-full mx-auto px-6 lg:px-10">
             <div class="grid grid-cols-2 md:grid-cols-3 items-center h-16">
                 <div class="flex justify-start items-center">
                     <Logo />
                 </div>
 
-                <nav class="hidden md:flex justify-center items-center space-x-8 h-full">
+                <nav class="hidden md:flex justify-center items-center space-x-4 h-full">
                     <div v-for="item in navItems" :key="item.slug" class="group h-full flex items-center">
                         <button
-                            class="text-sm font-normal tracking-normal hover:text-black transition-colors duration-300 h-full px-2">
+                            class="text-xs font-normal tracking-normal hover:text-black transition-colors duration-300 h-full px-3">
                             {{ item.name }}
                         </button>
                         <MegaMenu :item="item" />
@@ -42,7 +42,7 @@ const navItems = [
                         </div>
                         <Link :href="route('login')"
                             class="hidden md:block hover:text-black transition-colors duration-200">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
                                 <circle cx="12" cy="8.5" r="3" stroke="currentColor" stroke-width="1" />
                                 <path d="M17.5 21C17.5 18.5147 15.0376 16.5 12 16.5C8.96243 16.5 6.5 18.5147 6.5 21"
