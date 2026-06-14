@@ -1,0 +1,14 @@
+{
+  "build": {
+    "builder": "nixpacks"
+  },
+  "deploy": {
+    "start": "php artisan migrate --force && apache2-foreground",
+    "routes": [
+      {
+        "path": "/*",
+        "rewrite": "/public/$1"
+      }
+    ]
+  }
+}
