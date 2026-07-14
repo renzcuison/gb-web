@@ -21,6 +21,15 @@ class ProductVariant extends Model
         'low_stock_threshold',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'price_override' => 'decimal:2',
+            'stock_qty' => 'integer',
+            'low_stock_threshold' => 'integer',
+        ];
+    }
+
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
@@ -28,11 +37,11 @@ class ProductVariant extends Model
 
     public function inventoryMovements(): HasMany
     {
-        return $this->hasMany(InventoryMovement::class);
+        return $this->hasMany(InventoryMovement::class, 'variant_id');
     }
 
     public function alerts(): HasMany
     {
-        return $this->hasMany(InventoryAlert::class);
+        return $this->hasMany(InventoryAlert::class, 'variant_id');
     }
 }

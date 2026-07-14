@@ -24,6 +24,15 @@ class Product extends Model
         'is_active',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'cost_price' => 'decimal:2',
+            'price' => 'decimal:2',
+            'is_active' => 'boolean',
+        ];
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
@@ -36,7 +45,7 @@ class Product extends Model
 
     public function tags(): BelongsToMany
     {
-        return $this->belongsToMany(Tag::class);
+        return $this->belongsToMany(Tag::class)->withTimestamps();
     }
 
     public function variants(): HasMany

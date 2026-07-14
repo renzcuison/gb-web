@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('slug')->unique();
-            $table->string('color_code')->nullable();
+            $table->string('color_code', 7)->nullable();
             $table->timestamps();
         });
     }

@@ -17,6 +17,14 @@ class ProductMedia extends Model
         'order',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'is_primary' => 'boolean',
+            'order' => 'integer',
+        ];
+    }
+
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

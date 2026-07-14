@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProductVariant;
 use App\Models\InventoryMovement;
+use App\Models\InventoryAlert;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -32,7 +33,11 @@ class InventoryController extends Controller
         ]);
 
         DB::transaction(function () use ($validated) {
-            $variant = ProductVariant::lockForUpdate()->find($validated['variant_id']);
+            $variant = ProductVariant::lockForUpdate()->findOrFail($validated['variant_id']);
+
+            if ($validated['type'] === 'out' && $variant->stock_qty < $validated['quantity']) {
+                abort(422, 'Insufficient stock quantity for this adjustment.');
+            }
 
             InventoryMovement::create([
                 'variant_id' => $variant->id,
@@ -47,6 +52,18 @@ class InventoryController extends Controller
             } else {
                 $variant->decrement('stock_qty', $validated['quantity']);
             }
+            
+            if ($variant->stock_qty <= $variant->low_stock_threshold) {
+                            InventoryAlert::firstOrCreate(
+                                [
+                                    'variant_id' => $variant->id,
+                                    'is_resolved' => false
+                                ],
+                                [
+                                    'threshold_reached' => $variant->stock_qty
+                                ]
+                            );
+                        }
         });
 
         return back()->with('message', 'Inventory adjusted successfully.');

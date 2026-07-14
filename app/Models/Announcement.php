@@ -12,4 +12,12 @@ class Announcement extends Model
         'is_active',
         'priority'
         ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+            'priority' => 'integer',
+        ];
+    }
 }
