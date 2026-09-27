@@ -2,7 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\InventoryAlert;
+use App\Models\InventoryMovement;
 use App\Models\Product;
+use App\Models\Tag;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -33,6 +38,15 @@ class ProductController extends Controller
         ]);
     }
 
+    public function create()
+    {
+        return Inertia::render('Products/Create', [
+            'categories' => Category::orderBy('name')->get(['id', 'name']),
+            'brands' => Brand::orderBy('name')->get(['id', 'name']),
+            'tags' => Tag::orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -53,7 +67,7 @@ class ProductController extends Controller
             'variants.*.variant_label' => 'required|string|max:255',
             'variants.*.price_override' => 'nullable|numeric|min:0',
             'variants.*.stock_qty' => 'required|integer|min:0',
-            'variants.*.low_stock_threshold' => 'required|integer|min:0',
+            'variants.*.low_stock_threshold' => 'nullable|integer|min:0',
         ]);
 
         DB::transaction(function () use ($validated) {
@@ -62,10 +76,10 @@ class ProductController extends Controller
                 'brand_id' => $validated['brand_id'],
                 'name' => $validated['name'],
                 'slug' => Str::slug($validated['name']) . '-' . Str::random(5),
-                'description' => $validated['description'],
-                'cost_price' => $validated['cost_price'],
+                'description' => $validated['description'] ?? null,
+                'cost_price' => $validated['cost_price'] ?? null,
                 'price' => $validated['price'],
-                'is_active' => $validated['is_active'],
+                'is_active' => $validated['is_active'] ?? true,
             ]);
 
             if (!empty($validated['tags'])) {
@@ -85,14 +99,14 @@ class ProductController extends Controller
                 $productVariant = $product->variants()->create([
                     'sku' => $variant['sku'],
                     'variant_label' => $variant['variant_label'],
-                    'price_override' => $variant['price_override'],
+                    'price_override' => $variant['price_override'] ?? null,
                     'stock_qty' => $variant['stock_qty'],
-                    'low_stock_threshold' => $variant['low_stock_threshold'],
+                    'low_stock_threshold' => $variant['low_stock_threshold'] ?? 10,
                 ]);
 
                 if ($productVariant->stock_qty > 0) {
                     InventoryMovement::create([
-                        'variant_id' => $productVariant->id,
+                        'product_variant_id' => $productVariant->id,
                         'user_id' => auth()->id(),
                         'quantity' => $productVariant->stock_qty,
                         'type' => 'in',
@@ -102,7 +116,7 @@ class ProductController extends Controller
 
                 if ($productVariant->stock_qty <= $productVariant->low_stock_threshold) {
                     InventoryAlert::create([
-                        'variant_id' => $productVariant->id,
+                        'product_variant_id' => $productVariant->id,
                         'threshold_reached' => $productVariant->stock_qty,
                         'is_resolved' => false
                     ]);
@@ -110,6 +124,6 @@ class ProductController extends Controller
             }
         });
 
-        return back()->with('message', 'Product and its variants created successfully.');
+        return redirect()->route('inventory.index')->with('success', 'Product group and variants created successfully.');
     }
 }

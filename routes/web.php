@@ -15,9 +15,13 @@ use Inertia\Inertia;
 
 Route::get('/', [ProductController::class, 'index'])->name('storefront.index');
 
+Route::get('auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])
+    ->name('social.redirect');
+Route::get('auth/{provider}/callback', [SocialAuthController::class, 'callback'])
+    ->name('social.callback');
+
 Route::get('/dashboard', function (Request $request) {
     if ($request->user()->role === 'admin') {
-        // Compute database metrics using variant architecture
         $stats = [
             'totalItems' => ProductVariant::count(),
             'lowStockCount' => ProductVariant::whereRaw('stock_qty <= low_stock_threshold')->count(),
@@ -26,14 +30,12 @@ Route::get('/dashboard', function (Request $request) {
                 ->sum(DB::raw('stock_qty * COALESCE(product_variants.price_override, products.price)')),
         ];
 
-        // Fetch recent alert records linked via the 'variant' relation
-        $recentAlerts = InventoryAlert::with('variant.product')
+        $recentAlerts = InventoryAlert::with('productVariant.product')
             ->where('is_resolved', false)
             ->latest()
             ->take(5)
             ->get();
 
-        // Fetch highly stocked variant assets
         $topStockedItems = ProductVariant::with('product')
             ->orderByDesc('stock_qty')
             ->take(4)
@@ -49,13 +51,6 @@ Route::get('/dashboard', function (Request $request) {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::get('/products/{slug}', [ProductController::class, 'show'])->name('products.show');
-
-Route::get('auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])
-    ->name('social.redirect');
-Route::get('auth/{provider}/callback', [SocialAuthController::class, 'callback'])
-    ->name('social.callback');
-
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -63,6 +58,11 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::post('/inventory/adjust', [InventoryController::class, 'adjust'])->name('inventory.adjust');
+
+    Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
 });
+
+Route::get('/products/{slug}', [ProductController::class, 'show'])->name('products.show');
 
 require __DIR__ . '/auth.php';
