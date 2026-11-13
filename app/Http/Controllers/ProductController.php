@@ -8,9 +8,12 @@ use App\Models\InventoryAlert;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Tag;
+use App\Imports\ProductsImport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Validators\ValidationException;
 use Inertia\Inertia;
 
 class ProductController extends Controller
@@ -63,7 +66,7 @@ class ProductController extends Controller
             'attributes.*.name' => 'required|string|max:255',
             'attributes.*.value' => 'required|string|max:255',
             'variants' => 'required|array|min:1',
-            'variants.*.sku' => 'required|string|unique:product_variants,sku',
+            'variants.*.sku' => 'required|string|distinct|unique:product_variants,sku',
             'variants.*.variant_label' => 'required|string|max:255',
             'variants.*.price_override' => 'nullable|numeric|min:0',
             'variants.*.stock_qty' => 'required|integer|min:0',
@@ -104,9 +107,10 @@ class ProductController extends Controller
                     'low_stock_threshold' => $variant['low_stock_threshold'] ?? 10,
                 ]);
 
+                // Log opening movement using 'variant_id'
                 if ($productVariant->stock_qty > 0) {
                     InventoryMovement::create([
-                        'product_variant_id' => $productVariant->id,
+                        'variant_id' => $productVariant->id,
                         'user_id' => auth()->id(),
                         'quantity' => $productVariant->stock_qty,
                         'type' => 'in',
@@ -114,9 +118,10 @@ class ProductController extends Controller
                     ]);
                 }
 
+                // Log initial low stock alert using 'variant_id'
                 if ($productVariant->stock_qty <= $productVariant->low_stock_threshold) {
                     InventoryAlert::create([
-                        'product_variant_id' => $productVariant->id,
+                        'variant_id' => $productVariant->id,
                         'threshold_reached' => $productVariant->stock_qty,
                         'is_resolved' => false
                     ]);
@@ -125,5 +130,29 @@ class ProductController extends Controller
         });
 
         return redirect()->route('inventory.index')->with('success', 'Product group and variants created successfully.');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+        ]);
+
+        try {
+            Excel::import(new ProductsImport, $request->file('file'));
+
+            return back()->with('success', 'Products imported successfully!');
+        } catch (ValidationException $e) {
+            $failures = $e->failures();
+            $errors = [];
+
+            foreach ($failures as $failure) {
+                $errors[] = "Row {$failure->row()}: " . implode(', ', $failure->errors());
+            }
+
+            return back()->withErrors(['file' => $errors]);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['file' => 'Failed to process import file: ' . $e->getMessage()]);
+        }
     }
 }

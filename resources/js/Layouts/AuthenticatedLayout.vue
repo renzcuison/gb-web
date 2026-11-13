@@ -18,7 +18,6 @@ const showingNavigationDropdown = ref(false);
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="flex h-16 justify-between">
                         <div class="flex">
-                            <!-- Logo -->
                             <div class="flex shrink-0 items-center">
                                 <Link :href="route('dashboard')">
                                     <ApplicationLogo
@@ -37,12 +36,9 @@ const showingNavigationDropdown = ref(false);
                             </div>
                         </div>
 
-                        <!-- Desktop Menu Right Side -->
                         <div class="hidden sm:ms-6 sm:flex sm:items-center sm:space-x-3">
-                            <!-- Theme Toggle Button -->
                             <ThemeToggle />
 
-                            <!-- User Dropdown -->
                             <div class="relative ms-3">
                                 <Dropdown align="right" width="48">
                                     <template #trigger>
@@ -85,12 +81,9 @@ const showingNavigationDropdown = ref(false);
                             </div>
                         </div>
 
-                        <!-- Mobile Header Controls -->
                         <div class="-me-2 flex items-center space-x-2 sm:hidden">
-                            <!-- Mobile Theme Toggle -->
                             <ThemeToggle />
 
-                            <!-- Hamburger Button -->
                             <button
                                 @click="showingNavigationDropdown = !showingNavigationDropdown"
                                 class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:hover:bg-zinc-800 dark:hover:text-gray-300 dark:focus:bg-zinc-800 dark:focus:text-gray-300"
@@ -127,7 +120,6 @@ const showingNavigationDropdown = ref(false);
                     </div>
                 </div>
 
-                <!-- Mobile Navigation Menu -->
                 <div
                     :class="{
                         block: showingNavigationDropdown,
@@ -144,7 +136,6 @@ const showingNavigationDropdown = ref(false);
                         </ResponsiveNavLink>
                     </div>
 
-                    <!-- Responsive Settings Options -->
                     <div class="border-t border-gray-200 pb-1 pt-4 dark:border-zinc-800">
                         <div class="px-4">
                             <div class="text-base font-medium text-gray-800 dark:text-gray-200">

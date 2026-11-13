@@ -18,7 +18,7 @@ const navItems = [
 </script>
 
 <template>
-    <header class="sticky top-0 bg-white z-50 transition-all duration-300">
+    <header class="sticky top-0 bg-white text-zinc-900 z-50 transition-all duration-300">
         <div class="max-w-full mx-auto px-6 lg:px-10">
             <div class="grid grid-cols-2 md:grid-cols-3 items-center h-16">
                 <div class="flex justify-start items-center">
@@ -28,7 +28,7 @@ const navItems = [
                 <nav class="hidden md:flex justify-center items-center space-x-4 h-full">
                     <div v-for="item in navItems" :key="item.slug" class="group h-full flex items-center">
                         <button
-                            class="text-xs font-normal tracking-normal hover:text-black transition-colors duration-300 h-full px-3">
+                            class="text-xs font-normal tracking-normal text-zinc-700 hover:text-black transition-colors duration-300 h-full px-3">
                             {{ item.name }}
                         </button>
                         <MegaMenu :item="item" />
@@ -41,7 +41,7 @@ const navItems = [
                             <SearchBar />
                         </div>
                         <Link :href="route('login')"
-                            class="hidden md:block hover:text-black transition-colors duration-200">
+                            class="hidden md:block text-zinc-700 hover:text-black transition-colors duration-200">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
                                 <circle cx="12" cy="8.5" r="3" stroke="currentColor" stroke-width="1" />
@@ -51,7 +51,7 @@ const navItems = [
                         </Link>
                     </div>
                     <Hamburger :is-open="isMobileMenuOpen" @toggle="isMobileMenuOpen = !isMobileMenuOpen"
-                        class="md:hidden ml-5 -mr-2" />
+                        class="md:hidden ml-5 -mr-2 text-zinc-900" />
                 </div>
             </div>
         </div>

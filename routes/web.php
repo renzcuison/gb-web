@@ -5,6 +5,10 @@ use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\Auth\SocialAuthController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\BrandController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -61,6 +65,16 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
     Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+
+    Route::resource('categories', CategoryController::class)->except(['create', 'show', 'edit']);
+    Route::resource('brands', BrandController::class)->except(['create', 'show', 'edit']);
+
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+
+    Route::post('/products/import', [ProductController::class, 'import'])->name('products.import');
+
+    Route::get('/api/search', SearchController::class)->name('api.search');
 });
 
 Route::get('/products/{slug}', [ProductController::class, 'show'])->name('products.show');

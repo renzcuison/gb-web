@@ -16,6 +16,21 @@ export default {
     ],
     theme: {
         extend: {
+            colors: {
+                brand: {
+                    50: '#f0f9fa',
+                    100: '#e0f2f5',
+                    200: '#b8e5ed',
+                    300: '#7ed2e1',
+                    400: '#4fb9cd',
+                    500: '#389db0', 
+                    600: '#2b7e91',
+                    700: '#286878',
+                    800: '#265664',
+                    900: '#234854',
+                    950: '#132f38',
+                },
+            },
             fontFamily: {
                 sans: ['"Inter"', ...defaultTheme.fontFamily.sans],
                 display: ['"Public Sans"', 'sans-serif'],

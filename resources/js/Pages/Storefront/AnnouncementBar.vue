@@ -20,10 +20,10 @@ const { current } = useCarousel(announcements, 5000);
 </script>
 
 <template>
-    <div class="w-full bg-zinc-100 h-10 overflow-hidden flex items-center justify-center">
+    <div class="w-full bg-zinc-100 text-zinc-900 h-10 overflow-hidden flex items-center justify-center">
         <div class="relative flex items-center justify-center">
             <Transition name="slide-up" mode="out-in">
-                <p :key="current" class="text-xs font-normal tracking-normal text-center px-6">
+                <p :key="current" class="text-xs font-normal tracking-normal text-zinc-800 text-center px-6">
                     {{ announcements[current].content }}
                 </p>
             </Transition>
