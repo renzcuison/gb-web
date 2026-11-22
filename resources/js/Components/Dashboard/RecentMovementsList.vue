@@ -1,4 +1,5 @@
 <script setup>
+import { Link } from '@inertiajs/vue3'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table'
 
 defineProps({
@@ -20,7 +21,11 @@ const formatTime = (dateStr) => {
   <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden">
     <div class="px-4 py-3 border-b border-slate-200/80 dark:border-zinc-800 flex items-center justify-between">
       <h2 class="text-xs font-medium text-slate-700 dark:text-zinc-300">Recent Stock Activity</h2>
-      <span class="text-[11px] text-slate-400 dark:text-zinc-500">Latest adjustments</span>
+      <Link
+        :href="route('inventory.movements.index')"
+        class="text-[11px] font-medium text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
+        View all →
+      </Link>
     </div>
 
     <div class="overflow-x-auto">

@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Notifications\StockAlertNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Notification;
 
 class ProductVariant extends Model
 {
@@ -47,15 +49,30 @@ class ProductVariant extends Model
                 ->latest()
                 ->first();
 
+            $shouldNotify = false;
+
             if ($openAlert) {
+                $escalatedToOutOfStock = $openAlert->threshold_reached > 0 && $this->stock_qty <= 0;
+
                 if ($openAlert->threshold_reached !== $this->stock_qty) {
                     $openAlert->update(['threshold_reached' => $this->stock_qty]);
                 }
+
+                $shouldNotify = $escalatedToOutOfStock;
             } else {
                 $this->alerts()->create([
                     'threshold_reached' => $this->stock_qty,
                     'is_resolved' => false,
                 ]);
+
+                $shouldNotify = true;
+            }
+
+            if ($shouldNotify) {
+                $admins = User::where('role', 'admin')->get();
+                if ($admins->isNotEmpty()) {
+                    Notification::send($admins, new StockAlertNotification($this));
+                }
             }
 
             return;

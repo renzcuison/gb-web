@@ -9,6 +9,13 @@ import InventoryTable from './Components/InventoryTable.vue'
 import InventoryDetailSheet from './Components/InventoryDetailSheet.vue'
 import StockAdjustmentModal from './Components/StockAdjustmentModal.vue'
 import { Button } from '@/Components/ui/button'
+import { Download, ChevronDown } from 'lucide-vue-next'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/Components/ui/dropdown-menu'
 
 defineOptions({ layout: AdminLayout })
 
@@ -41,6 +48,17 @@ const inspectedVariant = computed(() => {
   )
 })
 
+const buildExportUrl = (format) => {
+  const params = new URLSearchParams()
+  params.set('format', format)
+  if (props.filters.search) params.set('search', props.filters.search)
+  if (props.filters.status && props.filters.status !== 'all') params.set('status', props.filters.status)
+  if (props.filters.category) params.set('category', String(props.filters.category))
+  if (props.filters.brand) params.set('brand', String(props.filters.brand))
+  if (props.filters.sort && props.filters.sort !== 'stock_asc') params.set('sort', props.filters.sort)
+  return `${route('inventory.export')}?${params.toString()}`
+}
+
 const openDetailSheet = (variant) => {
   inspectedVariantId.value = variant.id
   inspectedVariantFallback.value = variant
@@ -66,7 +84,28 @@ const openAdjustModal = (variant) => {
         Inventory Stock
       </h1>
 
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              size="sm"
+              variant="outline"
+              class="h-8 text-xs font-medium gap-1.5 border-slate-200 dark:border-zinc-800 bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 px-3 shadow-none">
+              <Download class="h-3.5 w-3.5" />
+              <span>Export</span>
+              <ChevronDown class="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-44 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
+            <DropdownMenuItem as-child class="text-xs cursor-pointer">
+              <a :href="buildExportUrl('xlsx')">Export Excel (.xlsx)</a>
+            </DropdownMenuItem>
+            <DropdownMenuItem as-child class="text-xs cursor-pointer">
+              <a :href="buildExportUrl('csv')">Export CSV (.csv)</a>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <Button
           size="sm"
           variant="outline"
@@ -105,7 +144,6 @@ const openAdjustModal = (variant) => {
       :variant="inspectedVariant"
       @adjust="openAdjustModal"
     />
-
 
     <StockAdjustmentModal
       v-model:open="isAdjustModalOpen"

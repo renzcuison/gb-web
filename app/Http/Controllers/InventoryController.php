@@ -2,18 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\InventoryExport;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\InventoryMovement;
 use App\Models\ProductVariant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Excel as ExcelFormat;
+use Maatwebsite\Excel\Facades\Excel;
 
 class InventoryController extends Controller
 {
-    public function index(Request $request)
+    protected function buildFilteredQuery(Request $request): Builder
     {
         $search = $request->input('search');
         $status = $request->input('status', 'all');
@@ -67,7 +71,14 @@ class InventoryController extends Controller
             default => $query->orderBy('stock_qty', 'asc'),
         };
 
-        $inventory = $query->paginate(15)->withQueryString();
+        return $query;
+    }
+
+    public function index(Request $request)
+    {
+        $inventory = $this->buildFilteredQuery($request)
+            ->paginate(15)
+            ->withQueryString();
 
         $stats = [
             'total' => ProductVariant::count(),
@@ -85,13 +96,26 @@ class InventoryController extends Controller
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'brands' => Brand::orderBy('name')->get(['id', 'name']),
             'filters' => [
-                'search' => $search ?? '',
-                'status' => $status,
-                'category' => $categoryId ? (int) $categoryId : null,
-                'brand' => $brandId ? (int) $brandId : null,
-                'sort' => $sort,
+                'search' => $request->input('search') ?? '',
+                'status' => $request->input('status', 'all'),
+                'category' => $request->input('category') ? (int) $request->input('category') : null,
+                'brand' => $request->input('brand') ? (int) $request->input('brand') : null,
+                'sort' => $request->input('sort', 'stock_asc'),
             ],
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        $format = $request->input('format', 'xlsx') === 'csv' ? 'csv' : 'xlsx';
+        $writerType = $format === 'csv' ? ExcelFormat::CSV : ExcelFormat::XLSX;
+        $filename = 'greatbuy-inventory-' . now()->format('Y-m-d-His') . '.' . $format;
+
+        return Excel::download(
+            new InventoryExport($this->buildFilteredQuery($request)),
+            $filename,
+            $writerType
+        );
     }
 
     public function adjust(Request $request)

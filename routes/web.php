@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\InventoryMovementController;
 use App\Http\Controllers\Auth\SocialAuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\BrandController;
@@ -74,6 +75,7 @@ Route::get('/dashboard', function (Request $request) {
 
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -85,7 +87,11 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::get('/inventory/export', [InventoryController::class, 'export'])->name('inventory.export');
     Route::post('/inventory/adjust', [InventoryController::class, 'adjust'])->name('inventory.adjust');
+
+    Route::get('/inventory/movements', [InventoryMovementController::class, 'index'])->name('inventory.movements.index');
+    Route::get('/inventory/movements/export', [InventoryMovementController::class, 'export'])->name('inventory.movements.export');
 
     // Product Management
     Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
