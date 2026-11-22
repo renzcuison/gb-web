@@ -121,20 +121,9 @@ class InventoryController extends Controller
             }
 
             $variant->refresh();
-
-            if ($variant->stock_qty <= $variant->low_stock_threshold) {
-                InventoryAlert::firstOrCreate(
-                    [
-                        'variant_id' => $variant->id,
-                        'is_resolved' => false,
-                    ],
-                    [
-                        'threshold_reached' => $variant->stock_qty,
-                    ]
-                );
-            }
+            $variant->syncStockAlert();
         });
 
-        return back()->with('message', 'Inventory adjusted successfully.');
+        return back()->with('success', 'Inventory adjusted successfully.');
     }
 }

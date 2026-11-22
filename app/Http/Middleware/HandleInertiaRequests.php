@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\InventoryMovement;
+use App\Models\Announcement;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -48,6 +49,11 @@ class HandleInertiaRequests extends Middleware
                     ];
                 })
                 : [],
+
+            'announcements' => fn () => Announcement::where('is_active', true)
+            ->orderByDesc('priority')
+            ->latest()
+            ->get(['id', 'content', 'priority']),
         ]);
     }
 }

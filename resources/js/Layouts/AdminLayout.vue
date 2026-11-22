@@ -36,7 +36,13 @@ const navigation = [
 ]
 
 const isCurrentPath = (href) => {
-  return page.url.startsWith(href)
+  const currentPath = page.url.split('?')[0]
+
+  if (href === '/inventory') {
+    return currentPath === '/inventory'
+  }
+
+  return currentPath === href || currentPath.startsWith(`${href}/`)
 }
 </script>
 

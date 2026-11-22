@@ -30,6 +30,42 @@ class ProductVariant extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function (ProductVariant $variant) {
+            if ($variant->wasChanged(['stock_qty', 'low_stock_threshold'])) {
+                $variant->syncStockAlert();
+            }
+        });
+    }
+
+    public function syncStockAlert(): void
+    {
+        if ($this->stock_qty <= $this->low_stock_threshold) {
+            $openAlert = $this->alerts()
+                ->where('is_resolved', false)
+                ->latest()
+                ->first();
+
+            if ($openAlert) {
+                if ($openAlert->threshold_reached !== $this->stock_qty) {
+                    $openAlert->update(['threshold_reached' => $this->stock_qty]);
+                }
+            } else {
+                $this->alerts()->create([
+                    'threshold_reached' => $this->stock_qty,
+                    'is_resolved' => false,
+                ]);
+            }
+
+            return;
+        }
+
+        $this->alerts()
+            ->where('is_resolved', false)
+            ->update(['is_resolved' => true]);
+    }
+
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

@@ -16,18 +16,20 @@ class InventoryAlert extends Model
         'is_resolved',
     ];
 
-    /**
-     * Get the product variant associated with the alert.
-     */
-    public function variant()
+    protected function casts(): array
+    {
+        return [
+            'threshold_reached' => 'integer',
+            'is_resolved' => 'boolean',
+        ];
+    }
+
+    public function variant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class, 'variant_id');
     }
 
-    /**
-     * Relationship alias for queries referencing productVariant.
-     */
-    public function productVariant()
+    public function productVariant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class, 'variant_id');
     }

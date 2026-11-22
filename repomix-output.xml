@@ -1,0 +1,2769 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: database/migrations/**, app/Models/**, app/Http/Controllers/**, routes/**, resources/js/Layouts/**, resources/js/Pages/Admin/**
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/
+  Http/
+    Controllers/
+      Auth/
+        AuthenticatedSessionController.php
+        ConfirmablePasswordController.php
+        EmailVerificationNotificationController.php
+        EmailVerificationPromptController.php
+        NewPasswordController.php
+        PasswordController.php
+        PasswordResetLinkController.php
+        RegisteredUserController.php
+        SocialAuthController.php
+        VerifyEmailController.php
+      BrandController.php
+      CategoryController.php
+      Controller.php
+      InventoryController.php
+      NotificationController.php
+      ProductController.php
+      ProfileController.php
+      SearchController.php
+  Models/
+    Announcement.php
+    Brand.php
+    Category.php
+    InventoryAlert.php
+    InventoryMovement.php
+    Product.php
+    ProductAttribute.php
+    ProductMedia.php
+    ProductVariant.php
+    Tag.php
+    User.php
+database/
+  migrations/
+    0001_01_01_000000_create_users_table.php
+    0001_01_01_000001_create_cache_table.php
+    0001_01_01_000002_create_jobs_table.php
+    2024_01_01_000001_create_categories_table.php
+    2024_01_01_000002_create_brands_table.php
+    2024_01_01_000003_create_tags_table.php
+    2024_01_01_000004_create_products_table.php
+    2024_01_01_000005_create_product_tag_table.php
+    2024_01_01_000006_create_product_variants_table.php
+    2024_01_01_000007_create_inventory_alerts_table.php
+    2024_01_01_000008_create_inventory_movements_table.php
+    2024_01_01_000009_create_product_media_table.php
+    2024_01_01_000010_create_product_attributes_table.php
+    2024_01_01_000011_create_announcements_table.php
+    2026_04_13_061717_add_social_fields_to_users_table.php
+    2026_09_30_153454_create_notifications_table.php
+resources/
+  js/
+    Layouts/
+      AdminLayout.vue
+      AuthenticatedLayout.vue
+      GuestLayout.vue
+    Pages/
+      Admin/
+        Dashboard.vue
+routes/
+  auth.php
+  console.php
+  web.php
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/Http/Controllers/Auth/AuthenticatedSessionController.php">
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\LoginRequest;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class AuthenticatedSessionController extends Controller
+{
+    /**
+     * Display the login view.
+     */
+    public function create(): Response
+    {
+        return Inertia::render('Auth/Login', [
+            'canResetPassword' => Route::has('password.request'),
+            'status' => session('status'),
+        ]);
+    }
+
+    /**
+     * Handle an incoming authentication request.
+     */
+    public function store(LoginRequest $request): RedirectResponse
+    {
+        $request->authenticate();
+
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('dashboard', absolute: false));
+    }
+
+    /**
+     * Destroy an authenticated session.
+     */
+    public function destroy(Request $request): RedirectResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+
+        $request->session()->regenerateToken();
+
+        return redirect('/');
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Auth/ConfirmablePasswordController.php">
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class ConfirmablePasswordController extends Controller
+{
+    /**
+     * Show the confirm password view.
+     */
+    public function show(): Response
+    {
+        return Inertia::render('Auth/ConfirmPassword');
+    }
+
+    /**
+     * Confirm the user's password.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        if (! Auth::guard('web')->validate([
+            'email' => $request->user()->email,
+            'password' => $request->password,
+        ])) {
+            throw ValidationException::withMessages([
+                'password' => __('auth.password'),
+            ]);
+        }
+
+        $request->session()->put('auth.password_confirmed_at', time());
+
+        return redirect()->intended(route('dashboard', absolute: false));
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Auth/EmailVerificationNotificationController.php">
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+
+class EmailVerificationNotificationController extends Controller
+{
+    /**
+     * Send a new email verification notification.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        if ($request->user()->hasVerifiedEmail()) {
+            return redirect()->intended(route('dashboard', absolute: false));
+        }
+
+        $request->user()->sendEmailVerificationNotification();
+
+        return back()->with('status', 'verification-link-sent');
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Auth/EmailVerificationPromptController.php">
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class EmailVerificationPromptController extends Controller
+{
+    /**
+     * Display the email verification prompt.
+     */
+    public function __invoke(Request $request): RedirectResponse|Response
+    {
+        return $request->user()->hasVerifiedEmail()
+                    ? redirect()->intended(route('dashboard', absolute: false))
+                    : Inertia::render('Auth/VerifyEmail', ['status' => session('status')]);
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Auth/NewPasswordController.php">
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class NewPasswordController extends Controller
+{
+    /**
+     * Display the password reset view.
+     */
+    public function create(Request $request): Response
+    {
+        return Inertia::render('Auth/ResetPassword', [
+            'email' => $request->email,
+            'token' => $request->route('token'),
+        ]);
+    }
+
+    /**
+     * Handle an incoming new password request.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        // Here we will attempt to reset the user's password. If it is successful we
+        // will update the password on an actual user model and persist it to the
+        // database. Otherwise we will parse the error and return the response.
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user) use ($request) {
+                $user->forceFill([
+                    'password' => Hash::make($request->password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        // If the password was successfully reset, we will redirect the user back to
+        // the application's home authenticated view. If there is an error we can
+        // redirect them back to where they came from with their error message.
+        if ($status == Password::PASSWORD_RESET) {
+            return redirect()->route('login')->with('status', __($status));
+        }
+
+        throw ValidationException::withMessages([
+            'email' => [trans($status)],
+        ]);
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Auth/PasswordController.php">
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
+
+class PasswordController extends Controller
+{
+    /**
+     * Update the user's password.
+     */
+    public function update(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', Password::defaults(), 'confirmed'],
+        ]);
+
+        $request->user()->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return back();
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Auth/PasswordResetLinkController.php">
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class PasswordResetLinkController extends Controller
+{
+    /**
+     * Display the password reset link request view.
+     */
+    public function create(): Response
+    {
+        return Inertia::render('Auth/ForgotPassword', [
+            'status' => session('status'),
+        ]);
+    }
+
+    /**
+     * Handle an incoming password reset link request.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        // We will send the password reset link to this user. Once we have attempted
+        // to send the link, we will examine the response then see the message we
+        // need to show to the user. Finally, we'll send out a proper response.
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
+
+        if ($status == Password::RESET_LINK_SENT) {
+            return back()->with('status', __($status));
+        }
+
+        throw ValidationException::withMessages([
+            'email' => [trans($status)],
+        ]);
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Auth/RegisteredUserController.php">
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class RegisteredUserController extends Controller
+{
+    /**
+     * Display the registration view.
+     */
+    public function create(): Response
+    {
+        return Inertia::render('Auth/Register');
+    }
+
+    /**
+     * Handle an incoming registration request.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        event(new Registered($user));
+
+        Auth::login($user);
+
+        return redirect(route('dashboard', absolute: false));
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Auth/SocialAuthController.php">
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Laravel\Socialite\Facades\Socialite;
+use Illuminate\Support\Str;
+
+class SocialAuthController extends Controller
+{
+    public function redirect($provider)
+    {
+        return Socialite::driver($provider)->redirect();
+    }
+
+    public function callback($provider)
+    {
+        try {
+            $socialUser = Socialite::driver($provider)->user();
+        } catch (\Exception $e) {
+            return redirect()->route('login');
+        }
+
+        $user = User::where('provider_id', $socialUser->getId())
+            ->where('provider', $provider)
+            ->first();
+
+        if (!$user) {
+            $existingUser = User::where('email', $socialUser->getEmail())->first();
+
+            if ($existingUser) {
+                $existingUser->update([
+                    'provider_id' => $socialUser->getId(),
+                    'provider' => $provider,
+                ]);
+                $user = $existingUser;
+            } else {
+                $user = User::create([
+                    'name' => $socialUser->getName(),
+                    'email' => $socialUser->getEmail(),
+                    'provider' => $provider,
+                    'provider_id' => $socialUser->getId(),
+                    'email_verified_at' => now(),
+                    'password' => bcrypt(Str::random(24)),
+                ]);
+            }
+        }
+
+        Auth::login($user);
+
+        return redirect()->intended(route('dashboard', absolute: false));
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Auth/VerifyEmailController.php">
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Auth\Events\Verified;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Http\RedirectResponse;
+
+class VerifyEmailController extends Controller
+{
+    /**
+     * Mark the authenticated user's email address as verified.
+     */
+    public function __invoke(EmailVerificationRequest $request): RedirectResponse
+    {
+        if ($request->user()->hasVerifiedEmail()) {
+            return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+        }
+
+        if ($request->user()->markEmailAsVerified()) {
+            event(new Verified($request->user()));
+        }
+
+        return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/BrandController.php">
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Brand;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
+
+class BrandController extends Controller
+{
+    public function index()
+    {
+        return Inertia::render('Brands/Index', [
+            'brands' => Brand::withCount('products')
+                ->orderBy('name')
+                ->paginate(10)
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:brands,name',
+            'description' => 'nullable|string',
+        ]);
+
+        Brand::create([
+            'name' => $validated['name'],
+            'slug' => Str::slug($validated['name']),
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        return redirect()->back()->with('success', 'Brand created successfully.');
+    }
+
+    public function update(Request $request, Brand $brand)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:brands,name,' . $brand->id,
+            'description' => 'nullable|string',
+        ]);
+
+        $brand->update([
+            'name' => $validated['name'],
+            'slug' => Str::slug($validated['name']),
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        return redirect()->back()->with('success', 'Brand updated successfully.');
+    }
+
+    public function destroy(Brand $brand)
+    {
+        if ($brand->products_count > 0 || $brand->products()->count() > 0) {
+            return redirect()->back()->with('error', 'Cannot delete a brand linked to active products.');
+        }
+
+        $brand->delete();
+
+        return redirect()->back()->with('success', 'Brand deleted successfully.');
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/CategoryController.php">
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Category;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
+
+class CategoryController extends Controller
+{
+    public function index()
+    {
+        return Inertia::render('Categories/Index', [
+            'categories' => Category::withCount('products')
+                ->orderBy('name')
+                ->paginate(10)
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:categories,name',
+            'description' => 'nullable|string',
+        ]);
+
+        Category::create([
+            'name' => $validated['name'],
+            'slug' => Str::slug($validated['name']),
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        return redirect()->back()->with('success', 'Category created successfully.');
+    }
+
+    public function update(Request $request, Category $category)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
+            'description' => 'nullable|string',
+        ]);
+
+        $category->update([
+            'name' => $validated['name'],
+            'slug' => Str::slug($validated['name']),
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        return redirect()->back()->with('success', 'Category updated successfully.');
+    }
+
+    public function destroy(Category $category)
+    {
+        if ($category->products_count > 0 || $category->products()->count() > 0) {
+            return redirect()->back()->with('error', 'Cannot delete a category linked to active products.');
+        }
+
+        $category->delete();
+
+        return redirect()->back()->with('success', 'Category deleted successfully.');
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Controller.php">
+<?php
+
+namespace App\Http\Controllers;
+
+abstract class Controller
+{
+    //
+}
+</file>
+
+<file path="app/Http/Controllers/NotificationController.php">
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+
+class NotificationController extends Controller
+{
+    public function markAsRead(Request $request, string $id)
+    {
+        $notification = $request->user()->notifications()->findOrFail($id);
+        $notification->markAsRead();
+
+        return back();
+    }
+
+    public function markAllAsRead(Request $request)
+    {
+        $request->user()->unreadNotifications->markAsRead();
+
+        return back();
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/ProfileController.php">
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\ProfileUpdateRequest;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class ProfileController extends Controller
+{
+    /**
+     * Display the user's profile form.
+     */
+    public function edit(Request $request): Response
+    {
+        return Inertia::render('Profile/Edit', [
+            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'status' => session('status'),
+        ]);
+    }
+
+    /**
+     * Update the user's profile information.
+     */
+    public function update(ProfileUpdateRequest $request): RedirectResponse
+    {
+        $request->user()->fill($request->validated());
+
+        if ($request->user()->isDirty('email')) {
+            $request->user()->email_verified_at = null;
+        }
+
+        $request->user()->save();
+
+        return Redirect::route('profile.edit');
+    }
+
+    /**
+     * Delete the user's account.
+     */
+    public function destroy(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'password' => ['required', 'current_password'],
+        ]);
+
+        $user = $request->user();
+
+        Auth::logout();
+
+        $user->delete();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return Redirect::to('/');
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/SearchController.php">
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\Product;
+use Illuminate\Http\Request;
+
+class SearchController extends Controller
+{
+    public function __invoke(Request $request)
+    {
+        $query = trim($request->input('q', ''));
+        $category = $request->input('category', 'All');
+
+        if (strlen($query) < 2) {
+            return response()->json([]);
+        }
+
+        $results = collect();
+
+        if (in_array($category, ['All', 'Products'])) {
+            $products = Product::with(['variants', 'category'])
+                ->where('name', 'like', "%{$query}%")
+                ->orWhere('description', 'like', "%{$query}%")
+                ->orWhereHas('variants', function ($q) use ($query) {
+                    $q->where('sku', 'like', "%{$query}%");
+                })
+                ->take(6)
+                ->get()
+                ->map(function ($product) {
+                    $firstVariant = $product->variants->first();
+                    $sku = $firstVariant?->sku;
+                    $skuText = $sku ? "SKU: {$sku} • " : '';
+                    $totalStock = $product->variants->sum('stock_qty');
+
+                    return [
+                        'id'       => 'product-' . $product->id,
+                        'type'     => 'Products',
+                        'title'    => $product->name,
+                        'subtitle' => "{$skuText}Stock: {$totalStock} units",
+                        'href'     => "/inventory?search=" . urlencode($product->name),
+                    ];
+                });
+
+            $results = $results->concat($products);
+        }
+
+        if (in_array($category, ['All', 'Categories'])) {
+            $categories = Category::withCount('products')
+                ->where('name', 'like', "%{$query}%")
+                ->take(4)
+                ->get()
+                ->map(function ($cat) {
+                    return [
+                        'id'       => 'category-' . $cat->id,
+                        'type'     => 'Categories',
+                        'title'    => $cat->name,
+                        'subtitle' => "{$cat->products_count} Products",
+                        'href'     => "/inventory?category=" . $cat->id,
+                    ];
+                });
+
+            $results = $results->concat($categories);
+        }
+
+        if (in_array($category, ['All', 'Brands'])) {
+            $brands = Brand::withCount('products')
+                ->where('name', 'like', "%{$query}%")
+                ->take(4)
+                ->get()
+                ->map(function ($brand) {
+                    return [
+                        'id'       => 'brand-' . $brand->id,
+                        'type'     => 'Brands',
+                        'title'    => $brand->name,
+                        'subtitle' => "{$brand->products_count} Products",
+                        'href'     => "/inventory?brand=" . $brand->id,
+                    ];
+                });
+
+            $results = $results->concat($brands);
+        }
+
+        return response()->json($results->take(8));
+    }
+}
+</file>
+
+<file path="app/Models/Brand.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Brand extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+    ];
+
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
+    }
+}
+</file>
+
+<file path="app/Models/Category.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Category extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+    ];
+
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
+    }
+}
+</file>
+
+<file path="app/Models/ProductAttribute.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ProductAttribute extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'product_id',
+        'name',
+        'value',
+    ];
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+}
+</file>
+
+<file path="database/migrations/0001_01_01_000001_create_cache_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('cache', function (Blueprint $table) {
+            $table->string('key')->primary();
+            $table->mediumText('value');
+            $table->integer('expiration')->index();
+        });
+
+        Schema::create('cache_locks', function (Blueprint $table) {
+            $table->string('key')->primary();
+            $table->string('owner');
+            $table->integer('expiration')->index();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('cache');
+        Schema::dropIfExists('cache_locks');
+    }
+};
+</file>
+
+<file path="database/migrations/0001_01_01_000002_create_jobs_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('jobs', function (Blueprint $table) {
+            $table->id();
+            $table->string('queue')->index();
+            $table->longText('payload');
+            $table->unsignedTinyInteger('attempts');
+            $table->unsignedInteger('reserved_at')->nullable();
+            $table->unsignedInteger('available_at');
+            $table->unsignedInteger('created_at');
+        });
+
+        Schema::create('job_batches', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->string('name');
+            $table->integer('total_jobs');
+            $table->integer('pending_jobs');
+            $table->integer('failed_jobs');
+            $table->longText('failed_job_ids');
+            $table->mediumText('options')->nullable();
+            $table->integer('cancelled_at')->nullable();
+            $table->integer('created_at');
+            $table->integer('finished_at')->nullable();
+        });
+
+        Schema::create('failed_jobs', function (Blueprint $table) {
+            $table->id();
+            $table->string('uuid')->unique();
+            $table->text('connection');
+            $table->text('queue');
+            $table->longText('payload');
+            $table->longText('exception');
+            $table->timestamp('failed_at')->useCurrent();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('jobs');
+        Schema::dropIfExists('job_batches');
+        Schema::dropIfExists('failed_jobs');
+    }
+};
+</file>
+
+<file path="database/migrations/2024_01_01_000001_create_categories_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('categories', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->text('description')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('categories');
+    }
+};
+</file>
+
+<file path="database/migrations/2024_01_01_000002_create_brands_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('brands', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->text('description')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('brands');
+    }
+};
+</file>
+
+<file path="database/migrations/2024_01_01_000004_create_products_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('products', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('category_id')->constrained()->onDelete('cascade');
+            $table->foreignId('brand_id')->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->text('description')->nullable();
+            $table->decimal('cost_price', 12, 2)->nullable();
+            $table->decimal('price', 12, 2);
+            $table->boolean('is_active')->default(true);
+            $table->softDeletes();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('products');
+    }
+};
+</file>
+
+<file path="database/migrations/2024_01_01_000006_create_product_variants_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('product_variants', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('product_id')->constrained()->onDelete('cascade');
+            $table->string('sku')->unique();
+            $table->string('variant_label');
+            $table->decimal('price_override', 12, 2)->nullable();
+            $table->integer('stock_qty')->default(0);
+            $table->integer('low_stock_threshold')->default(10);
+            $table->softDeletes();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('product_variants');
+    }
+};
+</file>
+
+<file path="database/migrations/2024_01_01_000007_create_inventory_alerts_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('inventory_alerts', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('variant_id')->constrained('product_variants')->onDelete('cascade');
+            $table->integer('threshold_reached');
+            $table->boolean('is_resolved')->default(false);
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('inventory_alerts');
+    }
+};
+</file>
+
+<file path="database/migrations/2024_01_01_000008_create_inventory_movements_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('inventory_movements', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('variant_id')->constrained('product_variants')->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->integer('quantity');
+            $table->string('type');
+            $table->text('reason')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('inventory_movements');
+    }
+};
+</file>
+
+<file path="database/migrations/2024_01_01_000009_create_product_media_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('product_media', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('product_id')->constrained()->onDelete('cascade');
+            $table->string('file_path');
+            $table->boolean('is_primary')->default(false);
+            $table->integer('order')->default(0);
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('product_media');
+    }
+};
+</file>
+
+<file path="database/migrations/2024_01_01_000010_create_product_attributes_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('product_attributes', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('product_id')->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->string('value');
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('product_attributes');
+    }
+};
+</file>
+
+<file path="database/migrations/2024_01_01_000011_create_announcements_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('announcements', function (Blueprint $table) {
+            $table->id();
+            $table->string('content');
+            $table->boolean('is_active')->default(true);
+            $table->integer('priority')->default(0);
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('announcements');
+    }
+};
+</file>
+
+<file path="database/migrations/2026_04_13_061717_add_social_fields_to_users_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('provider')->nullable();
+            $table->string('provider_id')->nullable();
+            $table->string('password')->nullable()->change();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            //
+        });
+    }
+};
+</file>
+
+<file path="database/migrations/2026_09_30_153454_create_notifications_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('notifications', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->string('type');
+            $table->morphs('notifiable');
+            $table->text('data');
+            $table->timestamp('read_at')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('notifications');
+    }
+};
+</file>
+
+<file path="routes/auth.php">
+<?php
+
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\EmailVerificationNotificationController;
+use App\Http\Controllers\Auth\EmailVerificationPromptController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\VerifyEmailController;
+use Illuminate\Support\Facades\Route;
+
+Route::middleware('guest')->group(function () {
+    Route::get('register', [RegisteredUserController::class, 'create'])
+        ->name('register');
+
+    Route::post('register', [RegisteredUserController::class, 'store']);
+
+    Route::get('login', [AuthenticatedSessionController::class, 'create'])
+        ->name('login');
+
+    Route::post('login', [AuthenticatedSessionController::class, 'store']);
+
+    Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
+        ->name('password.request');
+
+    Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->name('password.email');
+
+    Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
+        ->name('password.reset');
+
+    Route::post('reset-password', [NewPasswordController::class, 'store'])
+        ->name('password.store');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('verify-email', EmailVerificationPromptController::class)
+        ->name('verification.notice');
+
+    Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+
+    Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+
+    Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
+        ->name('password.confirm');
+
+    Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
+
+    Route::put('password', [PasswordController::class, 'update'])->name('password.update');
+
+    Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
+        ->name('logout');
+});
+</file>
+
+<file path="routes/console.php">
+<?php
+
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Artisan;
+
+Artisan::command('inspire', function () {
+    $this->comment(Inspiring::quote());
+})->purpose('Display an inspiring quote');
+</file>
+
+<file path="app/Models/Announcement.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Announcement extends Model
+{
+    protected $fillable = [
+        'content',
+        'is_active',
+        'priority'
+        ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+            'priority' => 'integer',
+        ];
+    }
+}
+</file>
+
+<file path="app/Models/InventoryMovement.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class InventoryMovement extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'variant_id',
+        'user_id',
+        'quantity',
+        'type',
+        'reason',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'quantity' => 'integer',
+        ];
+    }
+
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'variant_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+}
+</file>
+
+<file path="app/Models/Product.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Product extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'category_id',
+        'brand_id',
+        'name',
+        'slug',
+        'description',
+        'cost_price',
+        'price',
+        'is_active',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'cost_price' => 'decimal:2',
+            'price' => 'decimal:2',
+            'is_active' => 'boolean',
+        ];
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class)->withTimestamps();
+    }
+
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    public function media(): HasMany
+    {
+        return $this->hasMany(ProductMedia::class);
+    }
+
+    public function attributes(): HasMany
+    {
+        return $this->hasMany(ProductAttribute::class);
+    }
+}
+</file>
+
+<file path="app/Models/ProductMedia.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ProductMedia extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'product_id',
+        'file_path',
+        'is_primary',
+        'order',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_primary' => 'boolean',
+            'order' => 'integer',
+        ];
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+}
+</file>
+
+<file path="app/Models/ProductVariant.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class ProductVariant extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'product_id',
+        'sku',
+        'variant_label',
+        'price_override',
+        'stock_qty',
+        'low_stock_threshold',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'price_override' => 'decimal:2',
+            'stock_qty' => 'integer',
+            'low_stock_threshold' => 'integer',
+        ];
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function inventoryMovements(): HasMany
+    {
+        return $this->hasMany(InventoryMovement::class, 'variant_id');
+    }
+
+    public function alerts(): HasMany
+    {
+        return $this->hasMany(InventoryAlert::class, 'variant_id');
+    }
+}
+</file>
+
+<file path="app/Models/Tag.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+class Tag extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'slug',
+        'color_code',
+    ];
+
+    public function products(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class)->withTimestamps();
+    }
+}
+</file>
+
+<file path="database/migrations/0001_01_01_000000_create_users_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password');
+            $table->string('role')->default('staff');
+            $table->rememberToken();
+            $table->timestamps();
+        });
+
+        Schema::create('password_reset_tokens', function (Blueprint $table) {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
+
+        Schema::create('sessions', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity')->index();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('users');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('sessions');
+    }
+};
+</file>
+
+<file path="database/migrations/2024_01_01_000003_create_tags_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('tags', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->string('color_code', 7)->nullable();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('tags');
+    }
+};
+</file>
+
+<file path="database/migrations/2024_01_01_000005_create_product_tag_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('product_tag', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('product_id')->constrained()->onDelete('cascade');
+            $table->foreignId('tag_id')->constrained()->onDelete('cascade');
+            $table->timestamps();
+
+            $table->unique(['product_id', 'tag_id']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('product_tag');
+    }
+};
+</file>
+
+<file path="resources/js/Layouts/GuestLayout.vue">
+<script setup>
+import Header from '@/Pages/Storefront/Header/Index.vue';
+</script>
+
+<template>
+    <div class="min-h-screen bg-white flex flex-col">
+        <Header />
+
+        <main class="flex-1 flex flex-col justify-center items-center px-6">
+            <div class="w-full sm:max-w-md">
+                <slot />
+            </div>
+        </main>
+    </div>
+</template>
+</file>
+
+<file path="app/Http/Controllers/InventoryController.php">
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\InventoryAlert;
+use App\Models\InventoryMovement;
+use App\Models\ProductVariant;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+
+class InventoryController extends Controller
+{
+    public function index(Request $request)
+    {
+        $search = $request->input('search');
+        $status = $request->input('status', 'all');
+        $categoryId = $request->input('category');
+        $brandId = $request->input('brand');
+        $sort = $request->input('sort', 'stock_asc');
+
+        $query = ProductVariant::with([
+            'product.category',
+            'product.brand',
+            'inventoryMovements' => fn ($q) => $q->latest()->limit(10),
+        ]);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('sku', 'like', "%{$search}%")
+                    ->orWhere('variant_label', 'like', "%{$search}%")
+                    ->orWhereHas('product', fn ($pq) => $pq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($status === 'in_stock') {
+            $query->whereColumn('stock_qty', '>', 'low_stock_threshold');
+        } elseif ($status === 'low_stock') {
+            $query->where('stock_qty', '>', 0)
+                ->whereColumn('stock_qty', '<=', 'low_stock_threshold');
+        } elseif ($status === 'out_of_stock') {
+            $query->where('stock_qty', '<=', 0);
+        }
+
+        if ($categoryId) {
+            $query->whereHas('product', fn ($q) => $q->where('category_id', $categoryId));
+        }
+
+        if ($brandId) {
+            $query->whereHas('product', fn ($q) => $q->where('brand_id', $brandId));
+        }
+
+        match ($sort) {
+            'stock_desc' => $query->orderBy('stock_qty', 'desc'),
+            'sku_asc' => $query->orderBy('sku', 'asc'),
+            'name_asc' => $query->join('products', 'product_variants.product_id', '=', 'products.id')
+                ->orderBy('products.name', 'asc')
+                ->select('product_variants.*'),
+            default => $query->orderBy('stock_qty', 'asc'),
+        };
+
+        $inventory = $query->paginate(15)->withQueryString();
+
+        $stats = [
+            'total' => ProductVariant::count(),
+            'in_stock' => ProductVariant::whereColumn('stock_qty', '>', 'low_stock_threshold')->count(),
+            'low_stock' => ProductVariant::where('stock_qty', '>', 0)
+                ->whereColumn('stock_qty', '<=', 'low_stock_threshold')
+                ->count(),
+            'out_of_stock' => ProductVariant::where('stock_qty', '<=', 0)->count(),
+        ];
+
+        return Inertia::render('Inventory/Index', [
+            'inventory' => $inventory,
+            'stats' => $stats,
+            'categories' => Category::orderBy('name')->get(['id', 'name']),
+            'brands' => Brand::orderBy('name')->get(['id', 'name']),
+            'filters' => [
+                'search' => $search ?? '',
+                'status' => $status,
+                'category' => $categoryId ? (int) $categoryId : null,
+                'brand' => $brandId ? (int) $brandId : null,
+                'sort' => $sort,
+            ],
+        ]);
+    }
+
+    public function adjust(Request $request)
+    {
+        $validated = $request->validate([
+            'variant_id' => 'required|exists:product_variants,id',
+            'quantity' => 'required|integer|min:1',
+            'type' => 'required|in:in,out',
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            $variant = ProductVariant::lockForUpdate()->findOrFail($validated['variant_id']);
+
+            if ($validated['type'] === 'out' && $variant->stock_qty < $validated['quantity']) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'Insufficient stock quantity for this adjustment.',
+                ]);
+            }
+
+            InventoryMovement::create([
+                'variant_id' => $variant->id,
+                'user_id' => auth()->id(),
+                'quantity' => $validated['quantity'],
+                'type' => $validated['type'],
+                'reason' => $validated['reason'],
+            ]);
+
+            if ($validated['type'] === 'in') {
+                $variant->increment('stock_qty', $validated['quantity']);
+            } else {
+                $variant->decrement('stock_qty', $validated['quantity']);
+            }
+
+            $variant->refresh();
+
+            if ($variant->stock_qty <= $variant->low_stock_threshold) {
+                InventoryAlert::firstOrCreate(
+                    [
+                        'variant_id' => $variant->id,
+                        'is_resolved' => false,
+                    ],
+                    [
+                        'threshold_reached' => $variant->stock_qty,
+                    ]
+                );
+            }
+        });
+
+        return back()->with('message', 'Inventory adjusted successfully.');
+    }
+}
+</file>
+
+<file path="app/Models/InventoryAlert.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class InventoryAlert extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'variant_id',
+        'threshold_reached',
+        'is_resolved',
+    ];
+
+    /**
+     * Get the product variant associated with the alert.
+     */
+    public function variant()
+    {
+        return $this->belongsTo(ProductVariant::class, 'variant_id');
+    }
+
+    /**
+     * Relationship alias for queries referencing productVariant.
+     */
+    public function productVariant()
+    {
+        return $this->belongsTo(ProductVariant::class, 'variant_id');
+    }
+}
+</file>
+
+<file path="app/Models/User.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class User extends Authenticatable
+{
+    /** @use HasFactory<\Database\Factories\UserFactory> */
+    use HasFactory, Notifiable;
+
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'role',
+        'provider',
+        'provider_id',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
+    }
+
+    public function inventoryMovements(): HasMany
+    {
+        return $this->hasMany(InventoryMovement::class);
+    }
+}
+</file>
+
+<file path="resources/js/Layouts/AdminLayout.vue">
+<script setup>
+import { computed } from 'vue'
+import { Link, usePage } from '@inertiajs/vue3'
+import Logo from '@/Components/Logo.vue'
+import RecentActivities from '@/Components/RecentActivities.vue'
+import GlobalSearch from '@/Components/GlobalSearch.vue'
+import NotificationDropdown from '@/Components/NotificationDropdown.vue'
+import UserMenu from '@/Components/UserMenu.vue'
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarTrigger,
+  SidebarInset
+} from '@/Components/ui/sidebar'
+import {
+  LayoutDashboard,
+  Package,
+  Bell,
+  Settings
+} from 'lucide-vue-next'
+
+const page = usePage()
+
+const navigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Inventory', href: '/inventory', icon: Package },
+  { name: 'Alerts', href: '/inventory/alerts', icon: Bell },
+  { name: 'Announcements', href: '/announcements', icon: Settings },
+]
+
+const isCurrentPath = (href) => {
+  return page.url.startsWith(href)
+}
+</script>
+
+<template>
+  <SidebarProvider>
+    <div
+      class="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 transition-colors duration-200">
+      <Sidebar class="border-r border-slate-200 dark:border-zinc-800 dark:bg-zinc-900">
+        <!-- Logo Header -->
+        <div class="flex h-14 items-center px-4 shrink-0">
+          <Link href="/dashboard" class="flex items-center gap-2 transition hover:opacity-90">
+            <Logo class="h-8 w-auto" />
+          </Link>
+        </div>
+
+        <SidebarContent
+          class="dark:bg-zinc-900 px-2 py-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+          <SidebarGroup>
+            <SidebarGroupLabel
+              class="text-slate-400 dark:text-zinc-500 font-semibold text-[11px] tracking-wider uppercase px-3 mb-2">
+              Management
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu class="space-y-1">
+                <SidebarMenuItem v-for="item in navigation" :key="item.name">
+                  <SidebarMenuButton as-child :is-active="isCurrentPath(item.href)"
+                    class="transition-all duration-150 rounded-md" :class="[
+                      isCurrentPath(item.href)
+                        ? '!bg-slate-200 !text-slate-900 dark:!bg-zinc-800 dark:!text-zinc-100 font-semibold'
+                        : 'text-slate-600 hover:!bg-slate-100 hover:!text-slate-900 dark:text-zinc-400 dark:hover:!bg-zinc-800/60 dark:hover:!text-zinc-100'
+                    ]">
+                    <Link :href="item.href"
+                      class="flex items-center gap-3 px-3 py-2 text-[13px] font-medium tracking-tight">
+                      <component :is="item.icon" class="h-4 w-4 shrink-0 transition-colors" :class="[
+                        isCurrentPath(item.href)
+                          ? '!text-slate-900 dark:!text-zinc-100'
+                          : 'text-slate-400 dark:text-zinc-500 group-hover:text-slate-700 dark:group-hover:text-zinc-200'
+                      ]" />
+                      <span>{{ item.name }}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
+
+      <SidebarInset class="flex flex-col flex-1 h-screen overflow-hidden dark:bg-zinc-950">
+        <header
+          class="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-6 relative z-50">
+
+          <div class="flex items-center gap-3">
+            <SidebarTrigger />
+            <RecentActivities />
+            <GlobalSearch />
+          </div>
+
+          <div class="flex items-center gap-2 sm:gap-3">
+            <NotificationDropdown />
+            <UserMenu />
+          </div>
+        </header>
+
+        <main
+          class="flex-1 overflow-y-auto p-6 md:p-8 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+          <slot />
+        </main>
+      </SidebarInset>
+    </div>
+  </SidebarProvider>
+</template>
+</file>
+
+<file path="resources/js/Layouts/AuthenticatedLayout.vue">
+<script setup>
+import { ref } from 'vue';
+import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import Dropdown from '@/Components/Dropdown.vue';
+import DropdownLink from '@/Components/DropdownLink.vue';
+import NavLink from '@/Components/NavLink.vue';
+import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
+import ThemeToggle from '@/Components/ThemeToggle.vue';
+import { Link } from '@inertiajs/vue3';
+
+const showingNavigationDropdown = ref(false);
+</script>
+
+<template>
+    <div>
+        <div class="min-h-screen bg-gray-100 dark:bg-zinc-900 transition-colors duration-200">
+            <nav class="border-b border-gray-100 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div class="flex h-16 justify-between">
+                        <div class="flex">
+                            <div class="flex shrink-0 items-center">
+                                <Link :href="route('dashboard')">
+                                    <ApplicationLogo
+                                        class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200"
+                                    />
+                                </Link>
+                            </div>
+
+                            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                <NavLink
+                                    :href="route('dashboard')"
+                                    :active="route().current('dashboard')"
+                                >
+                                    Dashboard
+                                </NavLink>
+                            </div>
+                        </div>
+
+                        <div class="hidden sm:ms-6 sm:flex sm:items-center sm:space-x-3">
+                            <ThemeToggle />
+
+                            <div class="relative ms-3">
+                                <Dropdown align="right" width="48">
+                                    <template #trigger>
+                                        <span class="inline-flex rounded-md">
+                                            <button
+                                                type="button"
+                                                class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none dark:bg-zinc-900 dark:text-gray-400 dark:hover:text-gray-200"
+                                            >
+                                                {{ $page.props.auth.user.name }}
+
+                                                <svg
+                                                    class="-me-0.5 ms-2 h-4 w-4"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        fill-rule="evenodd"
+                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                        clip-rule="evenodd"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </span>
+                                    </template>
+
+                                    <template #content>
+                                        <DropdownLink :href="route('profile.edit')">
+                                            Profile
+                                        </DropdownLink>
+                                        <DropdownLink
+                                            :href="route('logout')"
+                                            method="post"
+                                            as="button"
+                                        >
+                                            Log Out
+                                        </DropdownLink>
+                                    </template>
+                                </Dropdown>
+                            </div>
+                        </div>
+
+                        <div class="-me-2 flex items-center space-x-2 sm:hidden">
+                            <ThemeToggle />
+
+                            <button
+                                @click="showingNavigationDropdown = !showingNavigationDropdown"
+                                class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:hover:bg-zinc-800 dark:hover:text-gray-300 dark:focus:bg-zinc-800 dark:focus:text-gray-300"
+                            >
+                                <svg
+                                    class="h-6 w-6"
+                                    stroke="currentColor"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        :class="{
+                                            hidden: showingNavigationDropdown,
+                                            'inline-flex': !showingNavigationDropdown,
+                                        }"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M4 6h16M4 12h16M4 18h16"
+                                    />
+                                    <path
+                                        :class="{
+                                            hidden: !showingNavigationDropdown,
+                                            'inline-flex': showingNavigationDropdown,
+                                        }"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    :class="{
+                        block: showingNavigationDropdown,
+                        hidden: !showingNavigationDropdown,
+                    }"
+                    class="sm:hidden"
+                >
+                    <div class="space-y-1 pb-3 pt-2">
+                        <ResponsiveNavLink
+                            :href="route('dashboard')"
+                            :active="route().current('dashboard')"
+                        >
+                            Dashboard
+                        </ResponsiveNavLink>
+                    </div>
+
+                    <div class="border-t border-gray-200 pb-1 pt-4 dark:border-zinc-800">
+                        <div class="px-4">
+                            <div class="text-base font-medium text-gray-800 dark:text-gray-200">
+                                {{ $page.props.auth.user.name }}
+                            </div>
+                            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                {{ $page.props.auth.user.email }}
+                            </div>
+                        </div>
+
+                        <div class="mt-3 space-y-1">
+                            <ResponsiveNavLink :href="route('profile.edit')">
+                                Profile
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink
+                                :href="route('logout')"
+                                method="post"
+                                as="button"
+                            >
+                                Log Out
+                            </ResponsiveNavLink>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <header
+                class="bg-white shadow dark:bg-zinc-900 dark:shadow-zinc-950/50"
+                v-if="$slots.header"
+            >
+                <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                    <slot name="header" />
+                </div>
+            </header>
+
+            <main>
+                <slot />
+            </main>
+        </div>
+    </div>
+</template>
+</file>
+
+<file path="app/Http/Controllers/ProductController.php">
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\InventoryAlert;
+use App\Models\InventoryMovement;
+use App\Models\Product;
+use App\Models\Tag;
+use App\Imports\ProductsImport;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Validators\ValidationException;
+use Inertia\Inertia;
+
+class ProductController extends Controller
+{
+    public function index()
+    {
+        $products = Product::with(['category', 'brand'])
+            ->where('is_active', true)
+            ->latest()
+            ->paginate(12);
+
+        return Inertia::render('Storefront/Index', [
+            'products' => $products
+        ]);
+    }
+
+    public function show($slug)
+    {
+        $product = Product::with(['category', 'brand', 'variants'])
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        return Inertia::render('Storefront/Show', [
+            'product' => $product
+        ]);
+    }
+
+    public function create()
+    {
+        return Inertia::render('Products/Create', [
+            'categories' => Category::orderBy('name')->get(['id', 'name']),
+            'brands' => Brand::orderBy('name')->get(['id', 'name']),
+            'tags' => Tag::orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'category_id' => 'required|exists:categories,id',
+            'brand_id' => 'required|exists:brands,id',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'cost_price' => 'nullable|numeric|min:0',
+            'price' => 'required|numeric|min:0',
+            'is_active' => 'required|boolean',
+            'tags' => 'nullable|array',
+            'tags.*' => 'exists:tags,id',
+            'attributes' => 'nullable|array',
+            'attributes.*.name' => 'required|string|max:255',
+            'attributes.*.value' => 'required|string|max:255',
+            'variants' => 'required|array|min:1',
+            'variants.*.sku' => 'required|string|distinct|unique:product_variants,sku',
+            'variants.*.variant_label' => 'required|string|max:255',
+            'variants.*.price_override' => 'nullable|numeric|min:0',
+            'variants.*.stock_qty' => 'required|integer|min:0',
+            'variants.*.low_stock_threshold' => 'nullable|integer|min:0',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            $product = Product::create([
+                'category_id' => $validated['category_id'],
+                'brand_id' => $validated['brand_id'],
+                'name' => $validated['name'],
+                'slug' => Str::slug($validated['name']) . '-' . Str::random(5),
+                'description' => $validated['description'] ?? null,
+                'cost_price' => $validated['cost_price'] ?? null,
+                'price' => $validated['price'],
+                'is_active' => $validated['is_active'] ?? true,
+            ]);
+
+            if (!empty($validated['tags'])) {
+                $product->tags()->attach($validated['tags']);
+            }
+
+            if (!empty($validated['attributes'])) {
+                foreach ($validated['attributes'] as $attribute) {
+                    $product->attributes()->create([
+                        'name' => $attribute['name'],
+                        'value' => $attribute['value']
+                    ]);
+                }
+            }
+
+            foreach ($validated['variants'] as $variant) {
+                $productVariant = $product->variants()->create([
+                    'sku' => $variant['sku'],
+                    'variant_label' => $variant['variant_label'],
+                    'price_override' => $variant['price_override'] ?? null,
+                    'stock_qty' => $variant['stock_qty'],
+                    'low_stock_threshold' => $variant['low_stock_threshold'] ?? 10,
+                ]);
+
+                // Log opening movement using 'variant_id'
+                if ($productVariant->stock_qty > 0) {
+                    InventoryMovement::create([
+                        'variant_id' => $productVariant->id,
+                        'user_id' => auth()->id(),
+                        'quantity' => $productVariant->stock_qty,
+                        'type' => 'in',
+                        'reason' => 'Initial inventory load',
+                    ]);
+                }
+
+                // Log initial low stock alert using 'variant_id'
+                if ($productVariant->stock_qty <= $productVariant->low_stock_threshold) {
+                    InventoryAlert::create([
+                        'variant_id' => $productVariant->id,
+                        'threshold_reached' => $productVariant->stock_qty,
+                        'is_resolved' => false
+                    ]);
+                }
+            }
+        });
+
+        return redirect()->route('inventory.index')->with('success', 'Product group and variants created successfully.');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+        ]);
+
+        try {
+            Excel::import(new ProductsImport, $request->file('file'));
+
+            return back()->with('success', 'Products imported successfully!');
+        } catch (ValidationException $e) {
+            $failures = $e->failures();
+            $errors = [];
+
+            foreach ($failures as $failure) {
+                $errors[] = "Row {$failure->row()}: " . implode(', ', $failure->errors());
+            }
+
+            return back()->withErrors(['file' => $errors]);
+        } catch (\Throwable $e) {
+            return back()->withErrors(['file' => 'Failed to process import file: ' . $e->getMessage()]);
+        }
+    }
+}
+</file>
+
+<file path="resources/js/Pages/Admin/Dashboard.vue">
+<script setup>
+import { ref } from 'vue'
+import { Head, Link } from '@inertiajs/vue3'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
+import UrgentAlertsTable from '@/Components/Dashboard/UrgentAlertsTable.vue'
+import RecentMovementsList from '@/Components/Dashboard/RecentMovementsList.vue'
+import TopAllocatedStock from '@/Components/Dashboard/TopAllocatedStock.vue'
+import StockAdjustmentModal from '@/Pages/Inventory/Components/StockAdjustmentModal.vue'
+
+defineProps({
+  stats: {
+    type: Object,
+    default: () => ({
+      totalItems: 0,
+      outOfStockCount: 0,
+      lowStockCount: 0,
+      activeAnnouncements: 0,
+      totalValue: 0,
+    }),
+  },
+  recentAlerts: { type: Array, default: () => [] },
+  recentMovements: { type: Array, default: () => [] },
+  topStockedItems: { type: Array, default: () => [] },
+  activeAnnouncementsList: { type: Array, default: () => [] },
+})
+
+const isAdjustModalOpen = ref(false)
+const selectedVariant = ref(null)
+
+const openRestockModal = (variant) => {
+  if (!variant) return
+  selectedVariant.value = variant
+  isAdjustModalOpen.value = true
+}
+
+const formatCurrency = (val) =>
+  new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(val || 0))
+</script>
+
+<template>
+  <Head title="Dashboard" />
+
+  <AdminLayout>
+    <div class="w-full h-[calc(100vh-4rem)] overflow-y-auto pb-8 pr-1 space-y-5">
+      <div class="flex items-center justify-between pt-1">
+        <h1 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-zinc-100">
+          Dashboard
+        </h1>
+
+        <Link
+          :href="route('products.create')"
+          class="text-xs font-medium text-slate-700 hover:text-slate-950 dark:text-zinc-300 dark:hover:text-white transition-colors">
+          + Add Item Group
+        </Link>
+      </div>
+
+      <div
+        class="grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80 dark:divide-zinc-800 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl overflow-hidden">
+        <Link
+          :href="route('inventory.index', { status: 'out_of_stock' })"
+          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>Out of Stock</span>
+            <span>→</span>
+          </div>
+          <div
+            :class="[
+              'mt-1 font-mono text-lg font-semibold',
+              (stats.outOfStockCount ?? 0) > 0
+                ? 'text-rose-600 dark:text-rose-400'
+                : 'text-slate-900 dark:text-zinc-100',
+            ]">
+            {{ stats.outOfStockCount ?? 0 }}
+          </div>
+        </Link>
+
+        <Link
+          :href="route('inventory.index', { status: 'low_stock' })"
+          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>Low Stock</span>
+            <span>→</span>
+          </div>
+          <div
+            :class="[
+              'mt-1 font-mono text-lg font-semibold',
+              stats.lowStockCount > 0
+                ? 'text-amber-600 dark:text-amber-400'
+                : 'text-slate-900 dark:text-zinc-100',
+            ]">
+            {{ stats.lowStockCount }}
+          </div>
+        </Link>
+
+        <Link
+          :href="route('inventory.index')"
+          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>Total SKUs</span>
+            <span>→</span>
+          </div>
+          <div class="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-zinc-100">
+            {{ stats.totalItems }}
+          </div>
+        </Link>
+
+        <div class="px-4 py-3.5">
+          <div class="text-xs text-slate-500 dark:text-zinc-400">Stock Valuation</div>
+          <div class="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-zinc-100">
+            {{ formatCurrency(stats.totalValue) }}
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-5 lg:grid-cols-3 items-start">
+        <div class="lg:col-span-2 space-y-5">
+          <UrgentAlertsTable :alerts="recentAlerts" @restock="openRestockModal" />
+          <RecentMovementsList :movements="recentMovements" />
+        </div>
+
+        <div class="space-y-5">
+          <TopAllocatedStock :items="topStockedItems" />
+
+          <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200/80 dark:border-zinc-800 flex items-center justify-between">
+              <h2 class="text-xs font-medium text-slate-700 dark:text-zinc-300">Active Notices</h2>
+              <span class="font-mono text-[11px] text-slate-400 dark:text-zinc-500">
+                {{ stats.activeAnnouncements }}
+              </span>
+            </div>
+
+            <div class="divide-y divide-slate-100 dark:divide-zinc-800/60">
+              <div v-for="notice in activeAnnouncementsList" :key="notice.id" class="px-4 py-2.5">
+                <p class="text-xs text-slate-700 dark:text-zinc-300 leading-relaxed">
+                  {{ notice.content }}
+                </p>
+              </div>
+
+              <div v-if="activeAnnouncementsList.length === 0" class="py-8 text-center text-xs text-slate-400 dark:text-zinc-500">
+                No active notices.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <StockAdjustmentModal v-model:open="isAdjustModalOpen" :variant="selectedVariant" />
+    </div>
+  </AdminLayout>
+</template>
+</file>
+
+<file path="routes/web.php">
+<?php
+
+use App\Http\Controllers\ProfileController;
+use Illuminate\Foundation\Application;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\Auth\SocialAuthController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\BrandController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\NotificationController;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Models\ProductVariant;
+use App\Models\InventoryAlert;
+use App\Models\InventoryMovement;
+use App\Models\Announcement;
+use Inertia\Inertia;
+
+Route::get('/', [ProductController::class, 'index'])->name('storefront.index');
+
+Route::get('auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])
+    ->name('social.redirect');
+Route::get('auth/{provider}/callback', [SocialAuthController::class, 'callback'])
+    ->name('social.callback');
+
+Route::get('/dashboard', function (Request $request) {
+    if ($request->user()->role === 'admin') {
+        $stats = [
+            'totalItems' => ProductVariant::count(),
+            'outOfStockCount' => ProductVariant::where('stock_qty', '<=', 0)->count(),
+            'lowStockCount' => ProductVariant::where('stock_qty', '>', 0)
+                ->whereColumn('stock_qty', '<=', 'low_stock_threshold')
+                ->count(),
+            'activeAnnouncements' => Announcement::where('is_active', true)->count(),
+            'totalValue' => ProductVariant::join('products', 'product_variants.product_id', '=', 'products.id')
+                ->sum(DB::raw('stock_qty * COALESCE(product_variants.price_override, products.price, 0)')),
+        ];
+
+        $recentAlerts = InventoryAlert::with('productVariant.product')
+            ->where('is_resolved', false)
+            ->latest()
+            ->take(6)
+            ->get();
+
+        $recentMovements = InventoryMovement::with(['variant.product', 'user'])
+            ->latest()
+            ->take(6)
+            ->get();
+
+        $topStockedItems = ProductVariant::with('product')
+            ->orderByDesc('stock_qty')
+            ->take(5)
+            ->get();
+
+        $activeAnnouncementsList = Announcement::where('is_active', true)
+            ->orderByDesc('priority')
+            ->latest()
+            ->take(5)
+            ->get();
+
+        return Inertia::render('Admin/Dashboard', [
+            'stats' => $stats,
+            'recentAlerts' => $recentAlerts,
+            'recentMovements' => $recentMovements,
+            'topStockedItems' => $topStockedItems,
+            'activeAnnouncementsList' => $activeAnnouncementsList,
+        ]);
+    }
+
+    return Inertia::render('Dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::post('/inventory/adjust', [InventoryController::class, 'adjust'])->name('inventory.adjust');
+
+    Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
+    Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+
+    Route::resource('categories', CategoryController::class)->except(['create', 'show', 'edit']);
+    Route::resource('brands', BrandController::class)->except(['create', 'show', 'edit']);
+
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+
+    Route::post('/products/import', [ProductController::class, 'import'])->name('products.import');
+
+    Route::get('/api/search', SearchController::class)->name('api.search');
+});
+
+Route::get('/products/{slug}', [ProductController::class, 'show'])->name('products.show');
+
+require __DIR__ . '/auth.php';
+</file>
+
+</files>

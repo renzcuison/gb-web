@@ -9,6 +9,8 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\InventoryAlertController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -91,6 +93,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/products/import', [ProductController::class, 'import'])->name('products.import');
 
     Route::get('/api/search', SearchController::class)->name('api.search');
+
+    // Inventory Alerts
+    Route::get('/inventory/alerts', [InventoryAlertController::class, 'index'])->name('inventory.alerts.index');
+    Route::patch('/inventory/alerts/{alert}/resolve', [InventoryAlertController::class, 'resolve'])->name('inventory.alerts.resolve');
+    Route::post('/inventory/alerts/resolve-all', [InventoryAlertController::class, 'resolveAll'])->name('inventory.alerts.resolve-all');
+
+    // Announcements
+    Route::resource('announcements', AnnouncementController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::patch('/announcements/{announcement}/toggle', [AnnouncementController::class, 'toggle'])->name('announcements.toggle');
 });
 
 Route::get('/products/{slug}', [ProductController::class, 'show'])->name('products.show');

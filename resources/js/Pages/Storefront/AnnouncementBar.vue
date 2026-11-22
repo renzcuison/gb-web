@@ -24,7 +24,7 @@ const { current } = useCarousel(announcements, 5000);
         <div class="relative flex items-center justify-center">
             <Transition name="slide-up" mode="out-in">
                 <p :key="current" class="text-xs font-normal tracking-normal text-zinc-800 text-center px-6">
-                    {{ announcements[current].content }}
+                    {{ announcements[current]?.content }}
                 </p>
             </Transition>
         </div>
