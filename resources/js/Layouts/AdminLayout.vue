@@ -1,5 +1,4 @@
 <script setup>
-import { computed } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import Logo from '@/Components/Logo.vue'
 import RecentActivities from '@/Components/RecentActivities.vue'
@@ -23,23 +22,34 @@ import {
   LayoutDashboard,
   Package,
   Bell,
-  Settings
+  Megaphone
 } from 'lucide-vue-next'
 
 const page = usePage()
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Inventory', href: '/inventory', icon: Package },
-  { name: 'Alerts', href: '/inventory/alerts', icon: Bell },
-  { name: 'Announcements', href: '/announcements', icon: Settings },
+const navGroups = [
+  {
+    label: 'Management',
+    items: [
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Inventory', href: '/inventory', icon: Package },
+      { name: 'Alerts', href: '/inventory/alerts', icon: Bell },
+      { name: 'Announcements', href: '/announcements', icon: Megaphone },
+    ]
+  }
 ]
 
 const isCurrentPath = (href) => {
   const currentPath = page.url.split('?')[0]
 
   if (href === '/inventory') {
-    return currentPath === '/inventory'
+    return (
+      currentPath === '/inventory' ||
+      currentPath.startsWith('/categories') ||
+      currentPath.startsWith('/brands') ||
+      currentPath.startsWith('/tags') ||
+      currentPath.startsWith('/products')
+    )
   }
 
   return currentPath === href || currentPath.startsWith(`${href}/`)
@@ -51,7 +61,6 @@ const isCurrentPath = (href) => {
     <div
       class="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 transition-colors duration-200">
       <Sidebar class="border-r border-slate-200 dark:border-zinc-800 dark:bg-zinc-900">
-        <!-- Logo Header -->
         <div class="flex h-14 items-center px-4 shrink-0">
           <Link href="/dashboard" class="flex items-center gap-2 transition hover:opacity-90">
             <Logo class="h-8 w-auto" />
@@ -60,14 +69,14 @@ const isCurrentPath = (href) => {
 
         <SidebarContent
           class="dark:bg-zinc-900 px-2 py-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
-          <SidebarGroup>
+          <SidebarGroup v-for="group in navGroups" :key="group.label">
             <SidebarGroupLabel
               class="text-slate-400 dark:text-zinc-500 font-semibold text-[11px] tracking-wider uppercase px-3 mb-2">
-              Management
+              {{ group.label }}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu class="space-y-1">
-                <SidebarMenuItem v-for="item in navigation" :key="item.name">
+                <SidebarMenuItem v-for="item in group.items" :key="item.name">
                   <SidebarMenuButton as-child :is-active="isCurrentPath(item.href)"
                     class="transition-all duration-150 rounded-md" :class="[
                       isCurrentPath(item.href)

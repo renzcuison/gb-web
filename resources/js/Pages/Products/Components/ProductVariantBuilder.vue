@@ -8,10 +8,13 @@ const props = defineProps({
   form: {
     type: Object,
     required: true
+  },
+  isEdit: {
+    type: Boolean,
+    default: false
   }
 })
 
-// Auto-generate SKU helper
 const generateSku = (productName, label) => {
   if (!productName) return ''
   const cleanName = productName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 4)
@@ -20,11 +23,11 @@ const generateSku = (productName, label) => {
   return `${cleanName}-${cleanLabel}-${randomNum}`
 }
 
-// Add Variant Row
 const addVariant = () => {
   const count = props.form.variants.length + 1
   const label = `Variant ${count}`
   props.form.variants.push({
+    id: null,
     variant_label: label,
     sku: generateSku(props.form.name, label),
     price_override: null,
@@ -33,16 +36,14 @@ const addVariant = () => {
   })
 }
 
-// Remove Variant Row
 const removeVariant = (index) => {
   if (props.form.variants.length > 1) {
     props.form.variants.splice(index, 1)
   }
 }
 
-// Auto-fill initial SKUs when Product Name is typed
 watch(() => props.form.name, (newName) => {
-  if (newName && props.form.variants.length > 0) {
+  if (!props.isEdit && newName && props.form.variants.length > 0) {
     props.form.variants.forEach((variant) => {
       if (!variant.sku) {
         variant.sku = generateSku(newName, variant.variant_label)
@@ -95,7 +96,6 @@ watch(() => props.form.name, (newName) => {
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <!-- Label -->
           <div class="md:col-span-1">
             <label class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1">Variant Name</label>
             <Input
@@ -108,7 +108,6 @@ watch(() => props.form.name, (newName) => {
             </p>
           </div>
 
-          <!-- SKU Code -->
           <div class="md:col-span-1">
             <label class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1">SKU Code</label>
             <Input
@@ -121,9 +120,8 @@ watch(() => props.form.name, (newName) => {
             </p>
           </div>
 
-          <!-- Price Override -->
           <div class="md:col-span-1">
-            <label class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1">Price Override ($)</label>
+            <label class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1">Price Override (PHP)</label>
             <Input
               v-model.number="variant.price_override"
               type="number"
@@ -134,9 +132,10 @@ watch(() => props.form.name, (newName) => {
             />
           </div>
 
-          <!-- Opening Stock -->
           <div class="md:col-span-1">
-            <label class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1">Opening Stock</label>
+            <label class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1">
+              {{ isEdit ? 'Current Stock' : 'Opening Stock' }}
+            </label>
             <Input
               v-model.number="variant.stock_qty"
               type="number"
@@ -145,7 +144,6 @@ watch(() => props.form.name, (newName) => {
             />
           </div>
 
-          <!-- Alert Threshold -->
           <div class="md:col-span-1">
             <label class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1">Alert Threshold</label>
             <Input

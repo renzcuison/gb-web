@@ -2,6 +2,7 @@
 import { Head, useForm, Link } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import ProductGeneralForm from './Components/ProductGeneralForm.vue'
+import ProductMediaUploader from './Components/ProductMediaUploader.vue'
 import ProductVariantBuilder from './Components/ProductVariantBuilder.vue'
 import { Button } from '@/Components/ui/button'
 import { ArrowLeft } from 'lucide-vue-next'
@@ -32,6 +33,8 @@ const form = useForm({
     price: null,
     is_active: true,
     tags: [],
+    images: [],
+    primary_image_index: 0,
     variants: [
         {
             variant_label: 'Standard',
@@ -49,13 +52,12 @@ const handleSubmit = () => {
 </script>
 
 <template>
-
     <Head title="Create Product Item Group" />
 
     <div class="max-w-5xl mx-auto space-y-8 pb-12">
         <div class="flex items-center justify-between">
             <div class="space-y-1">
-                <Link href="/inventory"
+                <Link :href="route('inventory.index')"
                     class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 transition-colors">
                     <ArrowLeft class="h-3.5 w-3.5" />
                     <span>Back to Inventory</span>
@@ -64,20 +66,22 @@ const handleSubmit = () => {
                     New Item Group
                 </h1>
                 <p class="text-sm text-slate-500 dark:text-zinc-400">
-                    Create a parent product and configure its variants, opening stock, and reorder levels.
+                    Create a parent product and configure its media, variants, opening stock, and reorder levels.
                 </p>
             </div>
         </div>
 
         <form @submit.prevent="handleSubmit" class="space-y-8">
-            <ProductGeneralForm :form="form" :categories="props.categories" :brands="props.brands" />
+            <ProductGeneralForm :form="form" :categories="props.categories" :brands="props.brands" :tags="props.tags" />
+
+            <ProductMediaUploader :form="form" />
 
             <ProductVariantBuilder :form="form" />
 
             <div class="flex items-center justify-end gap-3 pt-4">
                 <Button type="button" variant="ghost" as-child
                     class="dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800">
-                    <Link href="/inventory">Cancel</Link>
+                    <Link :href="route('inventory.index')">Cancel</Link>
                 </Button>
                 <Button type="submit" :disabled="form.processing"
                     class="bg-slate-900 text-white hover:bg-slate-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">

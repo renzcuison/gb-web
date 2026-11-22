@@ -31,7 +31,7 @@ class HandleInertiaRequests extends Middleware
                 ])
                 : [],
 
-            'recent_activities' => fn() => $request->user()
+            'recent_activities' => fn() => $request->user()?->isAdmin()
                 ? InventoryMovement::with(['variant.product', 'user'])
                 ->latest()
                 ->take(10)

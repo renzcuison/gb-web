@@ -1,4 +1,5 @@
 <script setup>
+import { Link, router } from '@inertiajs/vue3'
 import { Button } from '@/Components/ui/button'
 import {
   Sheet,
@@ -50,6 +51,30 @@ const formatDate = (dateStr) => {
         </SheetHeader>
 
         <div class="flex-1 overflow-y-auto p-5 space-y-6">
+          <div
+            v-if="variant.product?.media && variant.product.media.length > 0"
+            class="aspect-video w-full rounded-lg border border-slate-200/80 dark:border-zinc-800 overflow-hidden bg-slate-50 dark:bg-zinc-900">
+            <img
+              :src="variant.product.media[0].url"
+              :alt="variant.product?.name"
+              class="h-full w-full object-cover"
+            />
+          </div>
+
+          <div v-if="variant.product?.tags && variant.product.tags.length > 0" class="flex flex-wrap gap-1.5">
+            <span
+              v-for="tag in variant.product.tags"
+              :key="tag.id"
+              class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border"
+              :style="{
+                backgroundColor: `${tag.color_code || '#64748b'}15`,
+                borderColor: `${tag.color_code || '#64748b'}40`,
+                color: tag.color_code || '#64748b'
+              }">
+              {{ tag.name }}
+            </span>
+          </div>
+
           <div class="divide-y divide-slate-100 dark:divide-zinc-800/80 border-y border-slate-100 dark:border-zinc-800/80 text-xs">
             <div class="flex items-center justify-between py-2.5">
               <span class="text-slate-500 dark:text-zinc-400">On Hand</span>
@@ -83,12 +108,31 @@ const formatDate = (dateStr) => {
             </div>
           </div>
 
+          <div v-if="!variant.deleted_at" class="grid grid-cols-2 gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              @click="emit('adjust', variant)"
+              class="h-8 text-xs font-medium border-slate-200 dark:border-zinc-800 shadow-none">
+              Adjust Stock
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              as-child
+              class="h-8 text-xs font-medium border-slate-200 dark:border-zinc-800 shadow-none">
+              <Link :href="route('products.edit', variant.product_id)">
+                Edit Product
+              </Link>
+            </Button>
+          </div>
           <Button
+            v-else
             size="sm"
             variant="outline"
-            @click="emit('adjust', variant)"
-            class="w-full h-8 text-xs font-medium border-slate-200 dark:border-zinc-800 shadow-none">
-            Adjust Stock
+            @click="router.post(route('products.restore', variant.product_id), {}, { preserveScroll: true, onSuccess: () => emit('update:open', false) })"
+            class="w-full h-8 text-xs font-medium border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/50 dark:text-emerald-400 shadow-none">
+            Restore Product
           </Button>
 
           <div class="space-y-2">

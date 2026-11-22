@@ -29,6 +29,7 @@ const statusTabs = computed(() => [
   { key: 'in_stock', label: 'In Stock', count: props.stats.in_stock },
   { key: 'low_stock', label: 'Low Stock', count: props.stats.low_stock },
   { key: 'out_of_stock', label: 'Out of Stock', count: props.stats.out_of_stock },
+  { key: 'archived', label: 'Archived', count: props.stats.archived ?? 0 },
 ])
 
 const sortOptions = [

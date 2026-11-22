@@ -11,6 +11,7 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\InventoryAlertController;
+use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -78,20 +79,29 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+});
+
+Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::post('/inventory/adjust', [InventoryController::class, 'adjust'])->name('inventory.adjust');
 
+    // Product Management
     Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
     Route::post('/products', [ProductController::class, 'store'])->name('products.store');
-
-    Route::resource('categories', CategoryController::class)->except(['create', 'show', 'edit']);
-    Route::resource('brands', BrandController::class)->except(['create', 'show', 'edit']);
-
-    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
-    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
-
+    Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
+    Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
+    Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+    Route::post('/products/{id}/restore', [ProductController::class, 'restore'])->name('products.restore');
     Route::post('/products/import', [ProductController::class, 'import'])->name('products.import');
 
+    // Catalog
+    Route::resource('categories', CategoryController::class)->except(['create', 'show', 'edit']);
+    Route::resource('brands', BrandController::class)->except(['create', 'show', 'edit']);
+    Route::resource('tags', TagController::class)->except(['create', 'show', 'edit']);
+
+    // Search
     Route::get('/api/search', SearchController::class)->name('api.search');
 
     // Inventory Alerts

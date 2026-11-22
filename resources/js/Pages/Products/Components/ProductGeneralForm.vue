@@ -1,8 +1,8 @@
 <script setup>
-import { Package } from 'lucide-vue-next'
+import { Package, Check } from 'lucide-vue-next'
 import { Input } from '@/Components/ui/input'
 
-defineProps({
+const props = defineProps({
   form: {
     type: Object,
     required: true
@@ -14,19 +14,44 @@ defineProps({
   brands: {
     type: Array,
     default: () => []
+  },
+  tags: {
+    type: Array,
+    default: () => []
   }
 })
+
+const toggleTag = (tagId) => {
+  const index = props.form.tags.indexOf(tagId)
+  if (index === -1) {
+    props.form.tags.push(tagId)
+  } else {
+    props.form.tags.splice(index, 1)
+  }
+}
 </script>
 
 <template>
   <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-6">
-    <div class="flex items-center gap-2 pb-4 border-b border-slate-100 dark:border-zinc-800">
-      <Package class="h-5 w-5 text-slate-500 dark:text-zinc-400" />
-      <h2 class="text-base font-semibold text-slate-900 dark:text-zinc-100">General Information</h2>
+    <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-zinc-800">
+      <div class="flex items-center gap-2">
+        <Package class="h-5 w-5 text-slate-500 dark:text-zinc-400" />
+        <h2 class="text-base font-semibold text-slate-900 dark:text-zinc-100">General Information</h2>
+      </div>
+
+      <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          v-model="form.is_active"
+          class="rounded border-slate-300 dark:border-zinc-700 text-slate-900 focus:ring-slate-900 dark:bg-zinc-800"
+        />
+        <span class="text-xs font-medium text-slate-700 dark:text-zinc-300">
+          Active on Storefront
+        </span>
+      </label>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Product Name -->
       <div class="md:col-span-2">
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-2">
           Item Name *
@@ -40,7 +65,6 @@ defineProps({
         <p v-if="form.errors.name" class="text-xs text-rose-500 dark:text-rose-400 mt-1">{{ form.errors.name }}</p>
       </div>
 
-      <!-- Category Select -->
       <div>
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-2">
           Category *
@@ -59,7 +83,6 @@ defineProps({
         </p>
       </div>
 
-      <!-- Brand Select -->
       <div>
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-2">
           Brand *
@@ -78,10 +101,9 @@ defineProps({
         </p>
       </div>
 
-      <!-- Base Selling Price -->
       <div>
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-2">
-          Base Selling Price ($) *
+          Base Selling Price (PHP) *
         </label>
         <Input
           v-model.number="form.price"
@@ -94,10 +116,9 @@ defineProps({
         <p v-if="form.errors.price" class="text-xs text-rose-500 dark:text-rose-400 mt-1">{{ form.errors.price }}</p>
       </div>
 
-      <!-- Base Cost Price -->
       <div>
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-2">
-          Cost Price ($)
+          Cost Price (PHP)
         </label>
         <Input
           v-model.number="form.cost_price"
@@ -112,7 +133,33 @@ defineProps({
         </p>
       </div>
 
-      <!-- Description -->
+      <div v-if="tags.length > 0" class="md:col-span-2">
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-2">
+          Tags
+        </label>
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="tag in tags"
+            :key="tag.id"
+            type="button"
+            @click="toggleTag(tag.id)"
+            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all"
+            :class="form.tags.includes(tag.id)
+              ? 'ring-2 ring-offset-1 ring-slate-900 dark:ring-zinc-100 dark:ring-offset-zinc-900'
+              : 'opacity-70 hover:opacity-100'"
+            :style="{
+              backgroundColor: `${tag.color_code || '#64748b'}18`,
+              borderColor: `${tag.color_code || '#64748b'}50`,
+              color: tag.color_code || '#64748b'
+            }"
+          >
+            <Check v-if="form.tags.includes(tag.id)" class="h-3 w-3 shrink-0" />
+            <span>{{ tag.name }}</span>
+          </button>
+        </div>
+        <p v-if="form.errors.tags" class="text-xs text-rose-500 dark:text-rose-400 mt-1">{{ form.errors.tags }}</p>
+      </div>
+
       <div class="md:col-span-2">
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-2">
           Description

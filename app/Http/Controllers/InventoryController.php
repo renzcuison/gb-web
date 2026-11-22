@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Brand;
 use App\Models\Category;
-use App\Models\InventoryAlert;
 use App\Models\InventoryMovement;
 use App\Models\ProductVariant;
 use Illuminate\Http\Request;
@@ -23,20 +22,18 @@ class InventoryController extends Controller
         $sort = $request->input('sort', 'stock_asc');
 
         $query = ProductVariant::with([
-            'product.category',
-            'product.brand',
+            'product' => fn ($q) => $q->withTrashed()->with([
+                'category',
+                'brand',
+                'tags:id,name,color_code',
+                'media' => fn ($mq) => $mq->orderByDesc('is_primary')->orderBy('order'),
+            ]),
             'inventoryMovements' => fn ($q) => $q->latest()->limit(10),
         ]);
 
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('sku', 'like', "%{$search}%")
-                    ->orWhere('variant_label', 'like', "%{$search}%")
-                    ->orWhereHas('product', fn ($pq) => $pq->where('name', 'like', "%{$search}%"));
-            });
-        }
-
-        if ($status === 'in_stock') {
+        if ($status === 'archived') {
+            $query->onlyTrashed();
+        } elseif ($status === 'in_stock') {
             $query->whereColumn('stock_qty', '>', 'low_stock_threshold');
         } elseif ($status === 'low_stock') {
             $query->where('stock_qty', '>', 0)
@@ -45,12 +42,20 @@ class InventoryController extends Controller
             $query->where('stock_qty', '<=', 0);
         }
 
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('sku', 'like', "%{$search}%")
+                    ->orWhere('variant_label', 'like', "%{$search}%")
+                    ->orWhereHas('product', fn ($pq) => $pq->withTrashed()->where('name', 'like', "%{$search}%"));
+            });
+        }
+
         if ($categoryId) {
-            $query->whereHas('product', fn ($q) => $q->where('category_id', $categoryId));
+            $query->whereHas('product', fn ($q) => $q->withTrashed()->where('category_id', $categoryId));
         }
 
         if ($brandId) {
-            $query->whereHas('product', fn ($q) => $q->where('brand_id', $brandId));
+            $query->whereHas('product', fn ($q) => $q->withTrashed()->where('brand_id', $brandId));
         }
 
         match ($sort) {
@@ -71,6 +76,7 @@ class InventoryController extends Controller
                 ->whereColumn('stock_qty', '<=', 'low_stock_threshold')
                 ->count(),
             'out_of_stock' => ProductVariant::where('stock_qty', '<=', 0)->count(),
+            'archived' => ProductVariant::onlyTrashed()->count(),
         ];
 
         return Inertia::render('Inventory/Index', [

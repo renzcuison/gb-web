@@ -112,11 +112,25 @@ const formatPrice = (variant) => {
             </TableCell>
 
             <TableCell class="py-2.5 text-right" @click.stop>
+              <div v-if="!variant.deleted_at" class="inline-flex items-center gap-3">
+                <Link
+                  :href="route('products.edit', variant.product_id)"
+                  class="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
+                  Edit
+                </Link>
+                <button
+                  type="button"
+                  @click="emit('adjust', variant)"
+                  class="text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
+                  Adjust
+                </button>
+              </div>
               <button
+                v-else
                 type="button"
-                @click="emit('adjust', variant)"
-                class="text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
-                Adjust
+                @click="router.post(route('products.restore', variant.product_id), {}, { preserveScroll: true })"
+                class="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 transition-colors">
+                Restore
               </button>
             </TableCell>
           </TableRow>

@@ -1,0 +1,1209 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: resources/js/Components/InventoryNavTabs.vue, resources/js/Components/NotificationDropdown.vue, resources/js/Pages/Inventory/Components/**, resources/js/Pages/Admin/Dashboard.vue, app/Notifications/**
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/
+  Notifications/
+    InventoryAlert.php
+resources/
+  js/
+    Components/
+      InventoryNavTabs.vue
+      NotificationDropdown.vue
+    Pages/
+      Admin/
+        Dashboard.vue
+      Inventory/
+        Components/
+          InventoryDetailSheet.vue
+          InventoryTable.vue
+          InventoryToolbar.vue
+          StockAdjustmentModal.vue
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/Notifications/InventoryAlert.php">
+<?php
+
+namespace App\Notifications;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
+
+class InventoryAlert extends Notification
+{
+    use Queueable;
+
+    public function __construct(
+        public string $title,
+        public string $message,
+        public string $type = 'warning',
+        public ?string $link = null
+    ) {}
+
+    public function via(object $notifiable): array
+    {
+        return ['database', 'mail'];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        $mail = (new MailMessage)
+            ->subject($this->title)
+            ->line($this->message);
+
+        if ($this->link) {
+            $mail->action('View Details', url($this->link));
+        }
+
+        return $mail;
+    }
+
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'title' => $this->title,
+            'message' => $this->message,
+            'type' => $this->type,
+            'link' => $this->link,
+        ];
+    }
+}
+</file>
+
+<file path="resources/js/Components/InventoryNavTabs.vue">
+<script setup>
+import { Link, usePage } from '@inertiajs/vue3'
+
+const page = usePage()
+</script>
+
+<template>
+    <div class="border-b border-slate-200 dark:border-zinc-800 mb-6">
+        <nav class="-mb-px flex space-x-6 text-sm font-medium">
+            <Link :href="route('inventory.index')" :class="[
+                page.component.startsWith('Inventory')
+                    ? 'border-slate-900 text-slate-900 dark:border-zinc-100 dark:text-zinc-100 font-bold'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-zinc-400 dark:hover:text-zinc-200',
+                'flex items-center pb-3 border-b-2 transition-colors'
+            ]">
+                <span>Stock Inventory</span>
+            </Link>
+
+            <Link :href="route('categories.index')" :class="[
+                page.component.startsWith('Categories')
+                    ? 'border-slate-900 text-slate-900 dark:border-zinc-100 dark:text-zinc-100 font-bold'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-zinc-400 dark:hover:text-zinc-200',
+                'flex items-center pb-3 border-b-2 transition-colors'
+            ]">
+                <span>Categories</span>
+            </Link>
+
+            <Link :href="route('brands.index')" :class="[
+                page.component.startsWith('Brands')
+                    ? 'border-slate-900 text-slate-900 dark:border-zinc-100 dark:text-zinc-100 font-bold'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-zinc-400 dark:hover:text-zinc-200',
+                'flex items-center pb-3 border-b-2 transition-colors'
+            ]">
+                <span>Brands</span>
+            </Link>
+
+             <Link :href="route('tags.index')" :class="[
+                page.component.startsWith('Tags')
+                    ? 'border-slate-900 text-slate-900 dark:border-zinc-100 dark:text-zinc-100 font-bold'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-zinc-400 dark:hover:text-zinc-200',
+                'flex items-center pb-3 border-b-2 transition-colors'
+            ]">
+                <span>Tags</span>
+            </Link>
+        </nav>
+    </div>
+</template>
+</file>
+
+<file path="resources/js/Components/NotificationDropdown.vue">
+<script setup>
+import { ref, computed } from 'vue'
+import { usePage, Link, router } from '@inertiajs/vue3'
+import {
+  Bell,
+  CheckCheck,
+  AlertTriangle,
+  Package,
+  Info,
+  X,
+  ChevronRight
+} from 'lucide-vue-next'
+
+const page = usePage()
+const isOpen = ref(false)
+const filterTab = ref('all')
+
+const notifications = computed(() => page.props.notifications || [])
+
+const unreadCount = computed(() => {
+  return notifications.value.filter(n => !n.read_at).length
+})
+
+const filteredNotifications = computed(() => {
+  if (filterTab.value === 'unread') {
+    return notifications.value.filter(n => !n.read_at)
+  }
+  return notifications.value
+})
+
+const markAsRead = (notification) => {
+  if (!notification.read_at) {
+    router.post(`/notifications/${notification.id}/read`, {}, {
+      preserveScroll: true,
+      preserveState: true
+    })
+  }
+}
+
+const markAllAsRead = () => {
+  router.post('/notifications/read-all', {}, {
+    preserveScroll: true,
+    preserveState: true
+  })
+}
+
+const getIcon = (type) => {
+  switch (type) {
+    case 'warning': return AlertTriangle
+    case 'danger': return Package
+    default: return Info
+  }
+}
+
+const getIconStyles = (type) => {
+  switch (type) {
+    case 'warning': return 'text-amber-500 bg-amber-50 dark:bg-amber-950/50'
+    case 'danger': return 'text-rose-500 bg-rose-50 dark:bg-rose-950/50'
+    default: return 'text-blue-500 bg-blue-50 dark:bg-blue-950/50'
+  }
+}
+</script>
+
+<template>
+  <div>
+    <!-- Bell Trigger Button -->
+    <button @click="isOpen = !isOpen" title="Notifications" aria-label="Notifications"
+      class="relative flex items-center justify-center h-9 w-9 rounded-lg text-slate-600 dark:text-zinc-300 bg-slate-100 hover:bg-slate-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 transition-colors border border-slate-200/80 dark:border-zinc-700/60">
+      <Bell class="h-4 w-4 text-slate-600 dark:text-zinc-300" />
+
+      <span v-if="unreadCount > 0"
+        class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-zinc-900">
+        {{ unreadCount > 9 ? '9+' : unreadCount }}
+      </span>
+    </button>
+
+    <!-- Teleport Overlay & Panel to Body -->
+    <Teleport to="body">
+      <!-- Full Screen Dim Backdrop (Dims Sidebar & Main Area completely, sits behind z-50 Header) -->
+      <div v-if="isOpen" @click="isOpen = false" class="fixed inset-0 bg-slate-900/40 dark:bg-black/60 z-40"></div>
+
+      <!-- Right Drawer Panel (Sits at top-14 under the Header) -->
+      <aside v-if="isOpen"
+        class="fixed top-14 bottom-0 right-0 z-50 w-full max-w-sm sm:max-w-md bg-white dark:bg-zinc-900 border-l border-slate-200 dark:border-zinc-800 shadow-2xl flex flex-col">
+        <!-- Header -->
+        <div
+          class="p-4 sm:p-5 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-zinc-900/80">
+          <div class="flex items-center gap-2.5">
+            <h2 class="text-base font-bold text-slate-900 dark:text-zinc-100">
+              Notifications
+            </h2>
+            <span v-if="unreadCount > 0"
+              class="px-2.5 py-0.5 text-xs font-semibold bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 rounded-full">
+              {{ unreadCount }} new
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button v-if="unreadCount > 0" @click="markAllAsRead" title="Mark all as read"
+              class="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-200 px-2 py-1 rounded-md hover:bg-slate-200/60 dark:hover:bg-zinc-800 transition">
+              <CheckCheck class="h-3.5 w-3.5 text-blue-500" />
+              <span>Mark all read</span>
+            </button>
+
+            <button @click="isOpen = false" aria-label="Close notifications panel"
+              class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-slate-200/60 dark:hover:bg-zinc-800 transition">
+              <X class="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div
+          class="flex items-center gap-2 px-4 py-2.5 border-b border-slate-100 dark:border-zinc-800/80 shrink-0 bg-white dark:bg-zinc-900">
+          <button @click="filterTab = 'all'" class="px-3 py-1 rounded-lg text-xs font-semibold transition" :class="filterTab === 'all'
+            ? 'bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs'
+            : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'">
+            All Notifications
+          </button>
+          <button @click="filterTab = 'unread'"
+            class="px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5" :class="filterTab === 'unread'
+              ? 'bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-xs'
+              : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'">
+            <span>Unread</span>
+            <span v-if="unreadCount > 0" class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+          </button>
+        </div>
+
+        <!-- Notification List -->
+        <div class="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-zinc-800/60">
+          <div v-for="item in filteredNotifications" :key="item.id" @click="markAsRead(item)"
+            class="flex items-start gap-3.5 p-4 hover:bg-slate-50/80 dark:hover:bg-zinc-800/40 transition cursor-pointer relative group"
+            :class="{ 'bg-slate-50/50 dark:bg-zinc-800/20': !item.read_at }">
+            <div v-if="!item.read_at" class="absolute left-0 top-0 bottom-0 w-1 bg-rose-500 rounded-r-sm"></div>
+
+            <div class="p-2.5 rounded-xl shrink-0 mt-0.5" :class="getIconStyles(item.type)">
+              <component :is="getIcon(item.type)" class="h-4 w-4" />
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex items-baseline justify-between gap-2">
+                <p class="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate">
+                  {{ item.title }}
+                </p>
+                <span class="text-[11px] font-medium text-slate-400 dark:text-zinc-500 shrink-0">
+                  {{ item.created_at_human }}
+                </span>
+              </div>
+
+              <p class="text-xs text-slate-600 dark:text-zinc-300 mt-1 leading-relaxed">
+                {{ item.message }}
+              </p>
+
+              <Link v-if="item.link" :href="item.link" @click="isOpen = false; markAsRead(item)"
+                class="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mt-2 transition">
+                <span>View action item</span>
+                <ChevronRight class="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div v-if="filteredNotifications.length === 0"
+            class="h-full flex flex-col items-center justify-center p-8 text-center">
+            <div class="p-3 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500 mb-3">
+              <Bell class="h-6 w-6" />
+            </div>
+            <p class="text-sm font-semibold text-slate-700 dark:text-zinc-300">
+              No {{ filterTab === 'unread' ? 'unread' : '' }} notifications
+            </p>
+            <p class="text-xs text-slate-400 dark:text-zinc-500 mt-1 max-w-[200px]">
+              When inventory alerts or system events occur, they will appear here.
+            </p>
+          </div>
+        </div>
+
+      </aside>
+    </Teleport>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Pages/Inventory/Components/InventoryDetailSheet.vue">
+<script setup>
+import { Button } from '@/Components/ui/button'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/Components/ui/sheet'
+
+defineProps({
+  open: Boolean,
+  variant: Object,
+})
+
+const emit = defineEmits(['update:open', 'adjust'])
+
+const formatPrice = (variant) => {
+  const raw = variant?.price_override ?? variant?.product?.price ?? variant?.product?.base_price
+  if (raw === null || raw === undefined) return '—'
+  return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(raw))
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+</script>
+
+<template>
+  <Sheet :open="open" @update:open="emit('update:open', $event)">
+    <SheetContent
+      class="w-full sm:max-w-[400px] p-0 flex flex-col bg-white dark:bg-zinc-950 border-l border-slate-200 dark:border-zinc-800 shadow-none">
+      <template v-if="variant">
+        <SheetHeader class="p-5 pb-4 border-b border-slate-200/80 dark:border-zinc-800 text-left space-y-1">
+          <div class="font-mono text-[11px] text-slate-500 dark:text-zinc-400">
+            {{ variant.sku }}
+          </div>
+          <SheetTitle class="text-base font-semibold text-slate-900 dark:text-zinc-100">
+            {{ variant.product?.name }}
+          </SheetTitle>
+          <SheetDescription class="text-xs text-slate-500 dark:text-zinc-400">
+            {{ variant.variant_label || 'Standard' }}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div class="flex-1 overflow-y-auto p-5 space-y-6">
+          <div class="divide-y divide-slate-100 dark:divide-zinc-800/80 border-y border-slate-100 dark:border-zinc-800/80 text-xs">
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-slate-500 dark:text-zinc-400">On Hand</span>
+              <span class="font-mono font-medium text-slate-900 dark:text-zinc-100">
+                {{ variant.stock_qty }} units
+              </span>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-slate-500 dark:text-zinc-400">Alert Threshold</span>
+              <span class="font-mono text-slate-700 dark:text-zinc-300">
+                {{ variant.low_stock_threshold }} units
+              </span>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-slate-500 dark:text-zinc-400">Unit Price</span>
+              <span class="font-mono text-slate-700 dark:text-zinc-300">
+                {{ formatPrice(variant) }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-slate-500 dark:text-zinc-400">Category</span>
+              <span class="text-slate-800 dark:text-zinc-200">
+                {{ variant.product?.category?.name || '—' }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-slate-500 dark:text-zinc-400">Brand</span>
+              <span class="text-slate-800 dark:text-zinc-200">
+                {{ variant.product?.brand?.name || '—' }}
+              </span>
+            </div>
+          </div>
+
+          <Button
+            size="sm"
+            variant="outline"
+            @click="emit('adjust', variant)"
+            class="w-full h-8 text-xs font-medium border-slate-200 dark:border-zinc-800 shadow-none">
+            Adjust Stock
+          </Button>
+
+          <div class="space-y-2">
+            <h3 class="text-xs font-medium text-slate-500 dark:text-zinc-400">
+              Recent Movements
+            </h3>
+
+            <div
+              v-if="variant.inventory_movements && variant.inventory_movements.length > 0"
+              class="divide-y divide-slate-100 dark:divide-zinc-800/80 border-t border-slate-100 dark:border-zinc-800/80">
+              <div
+                v-for="move in variant.inventory_movements"
+                :key="move.id"
+                class="py-2.5 flex items-center justify-between gap-3 text-xs">
+                <div class="min-w-0">
+                  <div class="text-slate-800 dark:text-zinc-200 truncate">
+                    {{ move.reason || (move.type === 'in' ? 'Stock In' : 'Stock Out') }}
+                  </div>
+                  <div class="text-[11px] text-slate-400 dark:text-zinc-500">
+                    {{ formatDate(move.created_at) }}
+                  </div>
+                </div>
+                <span
+                  :class="[
+                    'font-mono font-medium shrink-0',
+                    move.type === 'in' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
+                  ]">
+                  {{ move.type === 'in' ? '+' : '-' }}{{ move.quantity }}
+                </span>
+              </div>
+            </div>
+
+            <p v-else class="text-xs text-slate-400 dark:text-zinc-500 py-3">
+              No movements recorded yet.
+            </p>
+          </div>
+        </div>
+      </template>
+    </SheetContent>
+  </Sheet>
+</template>
+</file>
+
+<file path="resources/js/Pages/Inventory/Components/InventoryTable.vue">
+<script setup>
+import { ref } from 'vue'
+import { Link, router } from '@inertiajs/vue3'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/Components/ui/table'
+
+defineProps({
+  inventory: Object,
+  hasActiveFilters: Boolean,
+})
+
+const emit = defineEmits(['select', 'adjust'])
+
+const copiedSku = ref(null)
+const copySku = (sku) => {
+  navigator.clipboard?.writeText(sku)
+  copiedSku.value = sku
+  setTimeout(() => {
+    if (copiedSku.value === sku) copiedSku.value = null
+  }, 1200)
+}
+
+const getStockDisplay = (variant) => {
+  if (variant.stock_qty <= 0) {
+    return {
+      text: `${variant.stock_qty} units · Out`,
+      class: 'text-rose-600 dark:text-rose-400',
+    }
+  }
+  if (variant.stock_qty <= variant.low_stock_threshold) {
+    return {
+      text: `${variant.stock_qty} units · Low`,
+      class: 'text-amber-600 dark:text-amber-400',
+    }
+  }
+  return {
+    text: `${variant.stock_qty} units`,
+    class: 'text-slate-700 dark:text-zinc-300',
+  }
+}
+
+const getClassification = (variant) => {
+  const parts = [variant.product?.category?.name, variant.product?.brand?.name].filter(Boolean)
+  return parts.length > 0 ? parts.join(' · ') : '—'
+}
+
+const formatPrice = (variant) => {
+  const raw = variant.price_override ?? variant.product?.price ?? variant.product?.base_price
+  if (raw === null || raw === undefined) return '—'
+  return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(raw))
+}
+</script>
+
+<template>
+  <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden shadow-none">
+    <div class="overflow-x-auto">
+      <Table>
+        <TableHeader class="bg-slate-50/50 dark:bg-zinc-900/50">
+          <TableRow class="border-b border-slate-200/80 dark:border-zinc-800 hover:bg-transparent">
+            <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Product / Variant</TableHead>
+            <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">SKU</TableHead>
+            <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Category & Brand</TableHead>
+            <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Price</TableHead>
+            <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Stock</TableHead>
+            <TableHead class="text-right text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Action</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow
+            v-for="variant in inventory.data"
+            :key="variant.id"
+            @click="emit('select', variant)"
+            class="border-b border-slate-100 dark:border-zinc-800/60 hover:bg-slate-50/60 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer">
+            <TableCell class="py-2.5">
+              <div class="text-xs font-medium text-slate-900 dark:text-zinc-100">
+                {{ variant.product?.name }}
+              </div>
+              <div class="text-[11px] text-slate-500 dark:text-zinc-400">
+                {{ variant.variant_label || 'Standard' }}
+              </div>
+            </TableCell>
+
+            <TableCell class="py-2.5" @click.stop>
+              <button
+                type="button"
+                @click="copySku(variant.sku)"
+                title="Click to copy SKU"
+                class="font-mono text-xs text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 transition-colors">
+                <span v-if="copiedSku === variant.sku" class="text-emerald-600 dark:text-emerald-400">Copied</span>
+                <span v-else>{{ variant.sku }}</span>
+              </button>
+            </TableCell>
+
+            <TableCell class="py-2.5 text-xs text-slate-500 dark:text-zinc-400">
+              {{ getClassification(variant) }}
+            </TableCell>
+
+            <TableCell class="py-2.5 font-mono text-xs text-slate-600 dark:text-zinc-400">
+              {{ formatPrice(variant) }}
+            </TableCell>
+
+            <TableCell class="py-2.5">
+              <span :class="['text-xs font-mono font-medium', getStockDisplay(variant).class]">
+                {{ getStockDisplay(variant).text }}
+              </span>
+            </TableCell>
+
+            <TableCell class="py-2.5 text-right" @click.stop>
+              <button
+                type="button"
+                @click="emit('adjust', variant)"
+                class="text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
+                Adjust
+              </button>
+            </TableCell>
+          </TableRow>
+
+          <TableRow v-if="!inventory.data || inventory.data.length === 0">
+            <TableCell colspan="6" class="h-28 text-center text-xs text-slate-400 dark:text-zinc-500">
+              <div>No inventory records found.</div>
+              <button
+                v-if="hasActiveFilters"
+                type="button"
+                @click="router.get(route('inventory.index'))"
+                class="text-xs text-slate-700 dark:text-zinc-300 underline mt-1">
+                Clear filters
+              </button>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+
+    <div
+      v-if="inventory.total > 0"
+      class="flex items-center justify-between px-4 py-2.5 border-t border-slate-200/80 dark:border-zinc-800 text-[11px] text-slate-500 dark:text-zinc-400">
+      <span class="font-mono">
+        {{ inventory.from }}–{{ inventory.to }} of {{ inventory.total }}
+      </span>
+
+      <div v-if="inventory.last_page > 1" class="flex items-center gap-4">
+        <Link
+          v-if="inventory.prev_page_url"
+          :href="inventory.prev_page_url"
+          preserve-scroll
+          preserve-state
+          class="hover:text-slate-900 dark:hover:text-zinc-100 transition-colors">
+          Previous
+        </Link>
+        <span v-else class="opacity-40">Previous</span>
+
+        <span class="font-mono">{{ inventory.current_page }} / {{ inventory.last_page }}</span>
+
+        <Link
+          v-if="inventory.next_page_url"
+          :href="inventory.next_page_url"
+          preserve-scroll
+          preserve-state
+          class="hover:text-slate-900 dark:hover:text-zinc-100 transition-colors">
+          Next
+        </Link>
+        <span v-else class="opacity-40">Next</span>
+      </div>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Pages/Inventory/Components/InventoryToolbar.vue">
+<script setup>
+import { ref, computed, watch } from 'vue'
+import { router } from '@inertiajs/vue3'
+import { Button } from '@/Components/ui/button'
+import { Input } from '@/Components/ui/input'
+import { Search, X, ChevronDown, Check } from 'lucide-vue-next'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/Components/ui/dropdown-menu'
+
+const props = defineProps({
+  stats: Object,
+  categories: { type: Array, default: () => [] },
+  brands: { type: Array, default: () => [] },
+  filters: Object,
+})
+
+const search = ref(props.filters.search || '')
+const status = ref(props.filters.status || 'all')
+const category = ref(props.filters.category || null)
+const brand = ref(props.filters.brand || null)
+const sort = ref(props.filters.sort || 'stock_asc')
+
+const statusTabs = computed(() => [
+  { key: 'all', label: 'All', count: props.stats.total },
+  { key: 'in_stock', label: 'In Stock', count: props.stats.in_stock },
+  { key: 'low_stock', label: 'Low Stock', count: props.stats.low_stock },
+  { key: 'out_of_stock', label: 'Out of Stock', count: props.stats.out_of_stock },
+])
+
+const sortOptions = [
+  { value: 'stock_asc', label: 'Lowest Stock' },
+  { value: 'stock_desc', label: 'Highest Stock' },
+  { value: 'name_asc', label: 'Name (A–Z)' },
+  { value: 'sku_asc', label: 'SKU (A–Z)' },
+]
+
+const currentSortLabel = computed(
+  () => sortOptions.find((s) => s.value === sort.value)?.label || 'Sort'
+)
+const selectedCategoryName = computed(
+  () => props.categories.find((c) => c.id === category.value)?.name || 'Category'
+)
+const selectedBrandName = computed(
+  () => props.brands.find((b) => b.id === brand.value)?.name || 'Brand'
+)
+const hasActiveFilters = computed(
+  () => Boolean(search.value) || status.value !== 'all' || category.value !== null || brand.value !== null
+)
+
+const applyFilters = () => {
+  router.get(
+    route('inventory.index'),
+    {
+      search: search.value || undefined,
+      status: status.value !== 'all' ? status.value : undefined,
+      category: category.value || undefined,
+      brand: brand.value || undefined,
+      sort: sort.value !== 'stock_asc' ? sort.value : undefined,
+    },
+    { preserveState: true, preserveScroll: true, replace: true }
+  )
+}
+
+let timer = null
+watch(search, () => {
+  clearTimeout(timer)
+  timer = setTimeout(applyFilters, 300)
+})
+
+const setStatus = (val) => {
+  status.value = val
+  applyFilters()
+}
+
+const toggleCategory = (id) => {
+  category.value = category.value === id ? null : id
+  applyFilters()
+}
+
+const toggleBrand = (id) => {
+  brand.value = brand.value === id ? null : id
+  applyFilters()
+}
+
+const setSort = (val) => {
+  sort.value = val
+  applyFilters()
+}
+
+const resetAll = () => {
+  search.value = ''
+  status.value = 'all'
+  category.value = null
+  brand.value = null
+  sort.value = 'stock_asc'
+  applyFilters()
+}
+</script>
+
+<template>
+  <div class="space-y-3">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div class="relative flex-1 max-w-xs">
+        <Search class="h-3.5 w-3.5 text-slate-400 dark:text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Input
+          v-model="search"
+          type="text"
+          placeholder="Search item or SKU..."
+          class="h-8 pl-8 pr-7 text-xs bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800 text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus-visible:ring-1 shadow-none"
+        />
+        <button
+          v-if="search"
+          type="button"
+          @click="search = ''"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-300">
+          <X class="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="outline"
+              size="sm"
+              :class="[
+                'h-8 text-xs font-medium gap-1.5 px-2.5 shadow-none border-slate-200/80 dark:border-zinc-800',
+                category
+                  ? 'bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                  : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-300',
+              ]">
+              <span>{{ selectedCategoryName }}</span>
+              <ChevronDown class="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-44 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
+            <template v-if="categories.length > 0">
+              <DropdownMenuItem
+                v-for="cat in categories"
+                :key="cat.id"
+                @click="toggleCategory(cat.id)"
+                class="text-xs flex items-center justify-between cursor-pointer">
+                <span>{{ cat.name }}</span>
+                <Check v-if="category === cat.id" class="h-3.5 w-3.5" />
+              </DropdownMenuItem>
+            </template>
+            <div v-else class="px-2.5 py-2 text-xs text-slate-400 dark:text-zinc-500">
+              No categories
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="outline"
+              size="sm"
+              :class="[
+                'h-8 text-xs font-medium gap-1.5 px-2.5 shadow-none border-slate-200/80 dark:border-zinc-800',
+                brand
+                  ? 'bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                  : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-300',
+              ]">
+              <span>{{ selectedBrandName }}</span>
+              <ChevronDown class="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-44 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
+            <template v-if="brands.length > 0">
+              <DropdownMenuItem
+                v-for="b in brands"
+                :key="b.id"
+                @click="toggleBrand(b.id)"
+                class="text-xs flex items-center justify-between cursor-pointer">
+                <span>{{ b.name }}</span>
+                <Check v-if="brand === b.id" class="h-3.5 w-3.5" />
+              </DropdownMenuItem>
+            </template>
+            <div v-else class="px-2.5 py-2 text-xs text-slate-400 dark:text-zinc-500">
+              No brands
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="outline"
+              size="sm"
+              class="h-8 text-xs font-medium gap-1.5 px-2.5 bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 shadow-none">
+              <span>{{ currentSortLabel }}</span>
+              <ChevronDown class="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-40 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
+            <DropdownMenuItem
+              v-for="opt in sortOptions"
+              :key="opt.value"
+              @click="setSort(opt.value)"
+              class="text-xs flex items-center justify-between cursor-pointer">
+              <span>{{ opt.label }}</span>
+              <Check v-if="sort === opt.value" class="h-3.5 w-3.5" />
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <button
+          v-if="hasActiveFilters"
+          type="button"
+          @click="resetAll"
+          class="text-xs text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-1.5 transition-colors">
+          Reset
+        </button>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-5 border-b border-slate-200/80 dark:border-zinc-800 text-xs">
+      <button
+        v-for="tab in statusTabs"
+        :key="tab.key"
+        type="button"
+        @click="setStatus(tab.key)"
+        :class="[
+          '-mb-px pb-2 border-b-2 transition-colors flex items-center gap-1.5',
+          status === tab.key
+            ? 'border-slate-900 text-slate-900 dark:border-zinc-100 dark:text-zinc-100 font-medium'
+            : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200',
+        ]">
+        <span>{{ tab.label }}</span>
+        <span class="font-mono text-[11px] opacity-60">{{ tab.count }}</span>
+      </button>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Pages/Inventory/Components/StockAdjustmentModal.vue">
+<script setup>
+import { watch } from 'vue'
+import { useForm } from '@inertiajs/vue3'
+import { Button } from '@/Components/ui/button'
+import { Input } from '@/Components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/Components/ui/dialog'
+
+const props = defineProps({
+  open: Boolean,
+  variant: Object,
+})
+
+const emit = defineEmits(['update:open'])
+
+const form = useForm({
+  variant_id: '',
+  quantity: 1,
+  type: 'in',
+  reason: '',
+})
+
+watch(
+  () => props.variant,
+  (val) => {
+    if (val) {
+      form.clearErrors()
+      form.variant_id = val.id
+      form.quantity = 1
+      form.type = 'in'
+      form.reason = ''
+    }
+  }
+)
+
+const close = () => {
+  emit('update:open', false)
+  form.reset()
+}
+
+const submit = () => {
+  form.post(route('inventory.adjust'), {
+    preserveScroll: true,
+    onSuccess: () => close(),
+  })
+}
+</script>
+
+<template>
+  <Dialog :open="open" @update:open="close">
+    <DialogContent class="sm:max-w-[400px] p-5 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100 shadow-none">
+      <DialogHeader class="pb-2 border-b border-slate-100 dark:border-zinc-800/80">
+        <DialogTitle class="text-sm font-semibold text-slate-900 dark:text-zinc-100">
+          Adjust Stock Levels
+        </DialogTitle>
+        <DialogDescription v-if="variant" class="text-xs font-normal text-slate-500 dark:text-zinc-400 mt-0.5">
+          {{ variant.product?.name }} —
+          <span class="font-mono text-slate-600 dark:text-zinc-300">{{ variant.variant_label }}</span>
+        </DialogDescription>
+      </DialogHeader>
+
+      <form @submit.prevent="submit" class="space-y-3.5 pt-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1.5">
+            Adjustment Type
+          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              @click="form.type = 'in'"
+              :class="[
+                'py-2 px-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-1.5 transition-all shadow-none',
+                form.type === 'in'
+                  ? 'border-emerald-500/60 bg-emerald-50/60 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700/60'
+                  : 'border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400',
+              ]">
+              <span class="text-sm font-bold">＋</span>
+              <span>Stock In</span>
+            </button>
+            <button
+              type="button"
+              @click="form.type = 'out'"
+              :class="[
+                'py-2 px-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-1.5 transition-all shadow-none',
+                form.type === 'out'
+                  ? 'border-rose-500/60 bg-rose-50/60 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-700/60'
+                  : 'border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400',
+              ]">
+              <span class="text-sm font-bold">－</span>
+              <span>Stock Out</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label for="quantity" class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1.5">
+            Quantity
+          </label>
+          <Input
+            v-model.number="form.quantity"
+            type="number"
+            id="quantity"
+            min="1"
+            class="h-8 text-xs font-mono font-medium dark:bg-zinc-800/60 dark:border-zinc-700/80 dark:text-zinc-100 focus-visible:ring-1 shadow-none"
+          />
+          <p v-if="form.errors.quantity" class="text-xs text-rose-500 dark:text-rose-400 mt-1">
+            {{ form.errors.quantity }}
+          </p>
+        </div>
+
+        <div>
+          <label for="reason" class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1.5">
+            Reason
+          </label>
+          <textarea
+            v-model="form.reason"
+            id="reason"
+            rows="2.5"
+            placeholder="e.g., Weekly restocking, damaged item write-off"
+            class="flex min-h-[70px] w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-transparent px-2.5 py-1.5 text-xs text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400 dark:focus-visible:ring-zinc-600 shadow-none"
+          />
+          <p v-if="form.errors.reason" class="text-xs text-rose-500 dark:text-rose-400 mt-1">
+            {{ form.errors.reason }}
+          </p>
+        </div>
+
+        <DialogFooter class="pt-3 border-t border-slate-100 dark:border-zinc-800/80 gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            @click="close"
+            class="h-8 text-xs font-medium text-slate-600 dark:text-zinc-400 dark:hover:text-zinc-100 shadow-none">
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            :disabled="form.processing"
+            class="h-8 text-xs font-medium bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 shadow-none">
+            Confirm Adjustment
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  </Dialog>
+</template>
+</file>
+
+<file path="resources/js/Pages/Admin/Dashboard.vue">
+<script setup>
+import { ref } from 'vue'
+import { Head, Link } from '@inertiajs/vue3'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
+import UrgentAlertsTable from '@/Components/Dashboard/UrgentAlertsTable.vue'
+import RecentMovementsList from '@/Components/Dashboard/RecentMovementsList.vue'
+import TopAllocatedStock from '@/Components/Dashboard/TopAllocatedStock.vue'
+import StockAdjustmentModal from '@/Pages/Inventory/Components/StockAdjustmentModal.vue'
+
+defineProps({
+  stats: {
+    type: Object,
+    default: () => ({
+      totalItems: 0,
+      outOfStockCount: 0,
+      lowStockCount: 0,
+      activeAnnouncements: 0,
+      totalValue: 0,
+    }),
+  },
+  recentAlerts: { type: Array, default: () => [] },
+  recentMovements: { type: Array, default: () => [] },
+  topStockedItems: { type: Array, default: () => [] },
+  activeAnnouncementsList: { type: Array, default: () => [] },
+})
+
+const isAdjustModalOpen = ref(false)
+const selectedVariant = ref(null)
+
+const openRestockModal = (variant) => {
+  if (!variant) return
+  selectedVariant.value = variant
+  isAdjustModalOpen.value = true
+}
+
+const formatCurrency = (val) =>
+  new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(val || 0))
+</script>
+
+<template>
+  <Head title="Dashboard" />
+
+  <AdminLayout>
+    <div class="w-full h-[calc(100vh-4rem)] overflow-y-auto pb-8 pr-1 space-y-5">
+      <div class="flex items-center justify-between pt-1">
+        <h1 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-zinc-100">
+          Dashboard
+        </h1>
+
+        <Link
+          :href="route('products.create')"
+          class="text-xs font-medium text-slate-700 hover:text-slate-950 dark:text-zinc-300 dark:hover:text-white transition-colors">
+          + Add Item Group
+        </Link>
+      </div>
+
+      <div
+        class="grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80 dark:divide-zinc-800 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl overflow-hidden">
+        <Link
+          :href="route('inventory.index', { status: 'out_of_stock' })"
+          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>Out of Stock</span>
+            <span>→</span>
+          </div>
+          <div
+            :class="[
+              'mt-1 font-mono text-lg font-semibold',
+              (stats.outOfStockCount ?? 0) > 0
+                ? 'text-rose-600 dark:text-rose-400'
+                : 'text-slate-900 dark:text-zinc-100',
+            ]">
+            {{ stats.outOfStockCount ?? 0 }}
+          </div>
+        </Link>
+
+        <Link
+          :href="route('inventory.index', { status: 'low_stock' })"
+          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>Low Stock</span>
+            <span>→</span>
+          </div>
+          <div
+            :class="[
+              'mt-1 font-mono text-lg font-semibold',
+              stats.lowStockCount > 0
+                ? 'text-amber-600 dark:text-amber-400'
+                : 'text-slate-900 dark:text-zinc-100',
+            ]">
+            {{ stats.lowStockCount }}
+          </div>
+        </Link>
+
+        <Link
+          :href="route('inventory.index')"
+          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>Total SKUs</span>
+            <span>→</span>
+          </div>
+          <div class="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-zinc-100">
+            {{ stats.totalItems }}
+          </div>
+        </Link>
+
+        <div class="px-4 py-3.5">
+          <div class="text-xs text-slate-500 dark:text-zinc-400">Stock Valuation</div>
+          <div class="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-zinc-100">
+            {{ formatCurrency(stats.totalValue) }}
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-5 lg:grid-cols-3 items-start">
+        <div class="lg:col-span-2 space-y-5">
+          <UrgentAlertsTable :alerts="recentAlerts" @restock="openRestockModal" />
+          <RecentMovementsList :movements="recentMovements" />
+        </div>
+
+        <div class="space-y-5">
+          <TopAllocatedStock :items="topStockedItems" />
+
+          <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200/80 dark:border-zinc-800 flex items-center justify-between">
+              <h2 class="text-xs font-medium text-slate-700 dark:text-zinc-300">Active Notices</h2>
+              <span class="font-mono text-[11px] text-slate-400 dark:text-zinc-500">
+                {{ stats.activeAnnouncements }}
+              </span>
+            </div>
+
+            <div class="divide-y divide-slate-100 dark:divide-zinc-800/60">
+              <div v-for="notice in activeAnnouncementsList" :key="notice.id" class="px-4 py-2.5">
+                <p class="text-xs text-slate-700 dark:text-zinc-300 leading-relaxed">
+                  {{ notice.content }}
+                </p>
+              </div>
+
+              <div v-if="activeAnnouncementsList.length === 0" class="py-8 text-center text-xs text-slate-400 dark:text-zinc-500">
+                No active notices.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <StockAdjustmentModal v-model:open="isAdjustModalOpen" :variant="selectedVariant" />
+    </div>
+  </AdminLayout>
+</template>
+</file>
+
+</files>

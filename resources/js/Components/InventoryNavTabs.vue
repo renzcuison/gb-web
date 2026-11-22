@@ -33,6 +33,15 @@ const page = usePage()
             ]">
                 <span>Brands</span>
             </Link>
+
+             <Link :href="route('tags.index')" :class="[
+                page.component.startsWith('Tags')
+                    ? 'border-slate-900 text-slate-900 dark:border-zinc-100 dark:text-zinc-100 font-bold'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-zinc-400 dark:hover:text-zinc-200',
+                'flex items-center pb-3 border-b-2 transition-colors'
+            ]">
+                <span>Tags</span>
+            </Link>
         </nav>
     </div>
 </template>
