@@ -6,7 +6,11 @@ import ProductCard from './ProductCard.vue';
 const props = defineProps({
     title: String,
     subtitle: String,
-    items: Array
+    items: Array,
+    viewAllHref: {
+        type: String,
+        default: '#catalog'
+    }
 });
 
 const scrollContainer = ref(null);
@@ -35,14 +39,14 @@ const scroll = (direction) => {
                         <h2 class="text-xl sm:text-2xl uppercase tracking-wide text-zinc-900 font-bold leading-none">
                             {{ title }}
                         </h2>
-                        <a href="#"
+                        <a :href="viewAllHref"
                             class="hidden md:inline-block text-[13px] text-zinc-900 font-medium border-b border-black pb-0.5 whitespace-nowrap">
                             View all
                         </a>
                     </div>
 
                     <div class="flex items-baseline">
-                        <a href="#"
+                        <a :href="viewAllHref"
                             class="md:hidden text-[13px] text-zinc-900 font-medium border-b border-black pb-0.5 whitespace-nowrap">
                             View all
                         </a>
@@ -57,7 +61,7 @@ const scroll = (direction) => {
 
             <div ref="scrollContainer"
                 class="flex overflow-x-auto gap-0.5 lg:gap-1 scrollbar-hide snap-x snap-mandatory pb-4">
-                <ProductCard v-for="product in items" :key="product.name" :product="product"
+                <ProductCard v-for="product in items" :key="product.id || product.name" :product="product"
                     class="flex-none w-[calc(85%-0.125rem)] lg:w-[calc(25%-0.1875rem)]" />
             </div>
         </div>

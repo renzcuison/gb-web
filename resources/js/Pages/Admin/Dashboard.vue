@@ -14,6 +14,7 @@ defineProps({
       totalItems: 0,
       outOfStockCount: 0,
       lowStockCount: 0,
+      newInquiriesCount: 0,
       activeAnnouncements: 0,
       totalValue: 0,
     }),
@@ -22,6 +23,7 @@ defineProps({
   recentMovements: { type: Array, default: () => [] },
   topStockedItems: { type: Array, default: () => [] },
   activeAnnouncementsList: { type: Array, default: () => [] },
+  recentInquiries: { type: Array, default: () => [] },
 })
 
 const isAdjustModalOpen = ref(false)
@@ -55,7 +57,7 @@ const formatCurrency = (val) =>
       </div>
 
       <div
-        class="grid grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80 dark:divide-zinc-800 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl overflow-hidden">
+        class="grid grid-cols-2 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80 dark:divide-zinc-800 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl overflow-hidden">
         <Link
           :href="route('inventory.index', { status: 'out_of_stock' })"
           class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
@@ -93,6 +95,24 @@ const formatCurrency = (val) =>
         </Link>
 
         <Link
+          :href="route('inquiries.index', { status: 'new' })"
+          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>New Inquiries</span>
+            <span>→</span>
+          </div>
+          <div
+            :class="[
+              'mt-1 font-mono text-lg font-semibold',
+              (stats.newInquiriesCount ?? 0) > 0
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-slate-900 dark:text-zinc-100',
+            ]">
+            {{ stats.newInquiriesCount ?? 0 }}
+          </div>
+        </Link>
+
+        <Link
           :href="route('inventory.index')"
           class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
           <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
@@ -104,7 +124,7 @@ const formatCurrency = (val) =>
           </div>
         </Link>
 
-        <div class="px-4 py-3.5">
+        <div class="px-4 py-3.5 col-span-2 lg:col-span-1">
           <div class="text-xs text-slate-500 dark:text-zinc-400">Stock Valuation</div>
           <div class="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-zinc-100">
             {{ formatCurrency(stats.totalValue) }}
@@ -119,6 +139,50 @@ const formatCurrency = (val) =>
         </div>
 
         <div class="space-y-5">
+          <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200/80 dark:border-zinc-800 flex items-center justify-between">
+              <h2 class="text-xs font-medium text-slate-700 dark:text-zinc-300">Open Inquiries</h2>
+              <Link
+                :href="route('inquiries.index')"
+                class="text-[11px] font-medium text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
+                View all →
+              </Link>
+            </div>
+
+            <div class="divide-y divide-slate-100 dark:divide-zinc-800/60">
+              <Link
+                v-for="inq in recentInquiries"
+                :key="inq.id"
+                :href="route('inquiries.index', { status: inq.status })"
+                class="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors">
+                <div class="min-w-0">
+                  <div class="text-xs font-medium text-slate-900 dark:text-zinc-100 truncate">
+                    {{ inq.customer_name }}
+                  </div>
+                  <div class="text-[11px] text-slate-500 dark:text-zinc-400 truncate">
+                    {{ inq.product?.name ?? 'Product' }}
+                    <span v-if="inq.variant"> · {{ inq.variant.variant_label }}</span>
+                    <span class="font-mono"> (×{{ inq.quantity }})</span>
+                  </div>
+                </div>
+
+                <span
+                  :class="[
+                    'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium',
+                    inq.status === 'new'
+                      ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
+                      : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400',
+                  ]">
+                  {{ inq.status === 'new' ? 'New' : 'Contacted' }}
+                </span>
+              </Link>
+
+              <div v-if="recentInquiries.length === 0" class="py-8 text-center text-xs text-slate-400 dark:text-zinc-500">
+                No open inquiries.
+              </div>
+            </div>
+          </div>
+
           <TopAllocatedStock :items="topStockedItems" />
 
           <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden">

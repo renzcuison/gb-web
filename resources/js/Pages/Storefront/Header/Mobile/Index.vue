@@ -34,7 +34,7 @@ const toggleDropdown = (slug) => {
                 <Hamburger :is-open="true" @toggle="emit('close')" class="-mr-2" />
             </div>
             <div class="pb-4">
-                <SearchBar class="w-full" />
+                <SearchBar class="w-full" @submit="emit('close')" />
             </div>
         </div>
 
@@ -64,7 +64,9 @@ const toggleDropdown = (slug) => {
             transform: animateIn ? 'translateY(0)' : 'translateY(20px)',
             opacity: animateIn ? 1 : 0
         }">
-            <Link :href="route('login')" @click="emit('close')"
+            <Link
+                :href="$page.props.auth?.user ? route('dashboard') : route('login')"
+                @click="emit('close')"
                 class="flex items-center space-x-3 text-sm font-normal tracking-normal text-zinc-400 hover:text-black transition-colors group">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
                     class="stroke-current">
@@ -72,7 +74,7 @@ const toggleDropdown = (slug) => {
                     <path d="M17.5 21C17.5 18.5147 15.0376 16.5 12 16.5C8.96243 16.5 6.5 18.5147 6.5 21"
                         stroke-width="1" stroke-linecap="square" />
                 </svg>
-                <span>Sign in</span>
+                <span>{{ $page.props.auth?.user ? 'Dashboard' : 'Sign in' }}</span>
             </Link>
         </div>
     </div>

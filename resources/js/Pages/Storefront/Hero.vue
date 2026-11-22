@@ -1,5 +1,5 @@
 <script setup>
-import { Link } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 
 const brands = [
     { name: 'Adidas', slug: 'adidas', color: 'bg-zinc-100', image: '/images/brands/adidas.jpg', featured: true },
@@ -9,6 +9,20 @@ const brands = [
     { name: 'Veja', slug: 'veja', color: 'bg-zinc-200', image: '/images/brands/veja.jpg' },
     { name: 'Puma', slug: 'puma', color: 'bg-zinc-100', image: '/images/brands/puma.jpg' },
 ];
+
+const shopBrand = (slug) => {
+    router.get(
+        route('storefront.index'),
+        { brand: slug },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
+            },
+        }
+    );
+};
 
 const getDynamicClasses = (brand, index) => {
     const isLast = index === brands.length - 1;
@@ -35,11 +49,16 @@ const getDynamicClasses = (brand, index) => {
     <section class="w-full border-b border-zinc-200 overflow-hidden">
         <div class="grid grid-cols-2 grid-flow-dense md:grid-cols-4 md:grid-rows-3 h-[calc(100vh-6.5rem)] w-full gap-0">
 
-            <Link v-for="(brand, index) in brands" :key="brand.slug" href="#" :class="[
-                getDynamicClasses(brand, index),
-                brand.color,
-                'group relative overflow-hidden border-r border-b border-zinc-200 last:border-r-0'
-            ]">
+            <button
+                v-for="(brand, index) in brands"
+                :key="brand.slug"
+                type="button"
+                @click="shopBrand(brand.slug)"
+                :class="[
+                    getDynamicClasses(brand, index),
+                    brand.color,
+                    'group relative overflow-hidden border-r border-b border-zinc-200 last:border-r-0 text-left cursor-pointer'
+                ]">
                 <div class="absolute inset-0 z-0 overflow-hidden">
                     <img :src="brand.image" :alt="brand.name"
                         class="w-full h-full object-cover object-center transition-transform duration-[1500ms] cubic-bezier(0.165, 0.84, 0.44, 1) group-hover:scale-105" />
@@ -56,7 +75,7 @@ const getDynamicClasses = (brand, index) => {
                         Shop {{ brand.name }}
                     </h2>
                 </div>
-            </Link>
+            </button>
 
         </div>
     </section>

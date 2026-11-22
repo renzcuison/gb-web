@@ -13,6 +13,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\InventoryAlertController;
 use App\Http\Controllers\TagController;
+use App\Http\Controllers\InquiryController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,9 +21,14 @@ use App\Models\ProductVariant;
 use App\Models\InventoryAlert;
 use App\Models\InventoryMovement;
 use App\Models\Announcement;
+use App\Models\Inquiry;
 use Inertia\Inertia;
 
 Route::get('/', [ProductController::class, 'index'])->name('storefront.index');
+Route::get('/', [ProductController::class, 'index'])->name('storefront.index');
+Route::post('/inquiries', [InquiryController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('inquiries.store');
 
 Route::get('auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])
     ->name('social.redirect');
@@ -37,6 +43,7 @@ Route::get('/dashboard', function (Request $request) {
             'lowStockCount' => ProductVariant::where('stock_qty', '>', 0)
                 ->whereColumn('stock_qty', '<=', 'low_stock_threshold')
                 ->count(),
+            'newInquiriesCount' => Inquiry::where('status', Inquiry::STATUS_NEW)->count(),
             'activeAnnouncements' => Announcement::where('is_active', true)->count(),
             'totalValue' => ProductVariant::join('products', 'product_variants.product_id', '=', 'products.id')
                 ->sum(DB::raw('stock_qty * COALESCE(product_variants.price_override, products.price, 0)')),
@@ -64,12 +71,22 @@ Route::get('/dashboard', function (Request $request) {
             ->take(5)
             ->get();
 
+        $recentInquiries = Inquiry::with([
+            'product:id,name,slug',
+            'variant:id,sku,variant_label',
+        ])
+            ->whereIn('status', [Inquiry::STATUS_NEW, Inquiry::STATUS_CONTACTED])
+            ->latest()
+            ->take(5)
+            ->get();
+
         return Inertia::render('Admin/Dashboard', [
             'stats' => $stats,
             'recentAlerts' => $recentAlerts,
             'recentMovements' => $recentMovements,
             'topStockedItems' => $topStockedItems,
             'activeAnnouncementsList' => $activeAnnouncementsList,
+            'recentInquiries' => $recentInquiries,
         ]);
     }
 
@@ -118,6 +135,12 @@ Route::middleware(['auth', 'admin'])->group(function () {
     // Announcements
     Route::resource('announcements', AnnouncementController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::patch('/announcements/{announcement}/toggle', [AnnouncementController::class, 'toggle'])->name('announcements.toggle');
+
+    // Customer Inquiries
+    Route::get('/inquiries', [InquiryController::class, 'index'])->name('inquiries.index');
+    Route::patch('/inquiries/{inquiry}', [InquiryController::class, 'update'])->name('inquiries.update');
+    Route::post('/inquiries/{inquiry}/fulfill', [InquiryController::class, 'fulfill'])->name('inquiries.fulfill');
+    Route::delete('/inquiries/{inquiry}', [InquiryController::class, 'destroy'])->name('inquiries.destroy');
 });
 
 Route::get('/products/{slug}', [ProductController::class, 'show'])->name('products.show');

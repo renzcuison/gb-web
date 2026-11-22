@@ -1,34 +1,72 @@
 <script setup>
+import { onMounted, watch } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import AnnouncementBar from '@/Pages/Storefront/AnnouncementBar.vue';
 import Header from '@/Pages/Storefront/Header/Index.vue';
 import Hero from '@/Pages/Storefront/Hero.vue';
 import NewArrivals from '@/Pages/Storefront/NewArrivals.vue';
 import DiscoveryBanner from '@/Pages/Storefront/Partials/DiscoveryBanner.vue';
-import onDevelopment from '@/Pages/Storefront/onDevelopment.vue';
+import ShopAll from '@/Pages/Storefront/ShopAll.vue';
+import Footer from '@/Pages/Storefront/Footer.vue';
 
-defineProps({
-    products: Object
+const props = defineProps({
+    catalog: {
+        type: Object,
+        default: () => ({ items: [], total: 0, has_more: false }),
+    },
+    newArrivals: { type: Array, default: () => [] },
+    categories: { type: Array, default: () => [] },
+    brands: { type: Array, default: () => [] },
+    tags: { type: Array, default: () => [] },
+    filters: { type: Object, default: () => ({}) },
 });
+
+const hasActiveFilterQuery = (f) =>
+    Boolean(f?.search || f?.category || f?.brand || f?.tag || f?.in_stock);
+
+onMounted(() => {
+    if (hasActiveFilterQuery(props.filters)) {
+        requestAnimationFrame(() => {
+            document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+});
+
+watch(
+    () => props.filters,
+    (next) => {
+        if (hasActiveFilterQuery(next)) {
+            document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
+        }
+    },
+    { deep: true }
+);
 </script>
 
 <template>
-
     <Head title="Storefront" />
 
-    <div class="min-h-screen bg-white">
+    <div class="min-h-screen bg-white flex flex-col">
         <AnnouncementBar />
 
         <Header />
 
-        <main>
+        <main class="flex-1">
             <Hero />
 
-            <NewArrivals />
+            <NewArrivals :items="newArrivals" />
 
             <DiscoveryBanner />
 
-            <onDevelopment />
+            <ShopAll
+                :catalog="catalog"
+                :categories="categories"
+                :brands="brands"
+                :tags="tags"
+                :filters="filters"
+            />
         </main>
+
+        <Footer :categories="categories" />
     </div>
 </template>

@@ -1,20 +1,51 @@
 <script setup>
-import { ref } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
 import SearchBar from '@/Components/SearchBar.vue';
 import Logo from '@/Components/Logo.vue';
 import Hamburger from '@/Pages/Storefront/Header/Mobile/Hamburger.vue';
 import MobileMenu from './Mobile/Index.vue';
 import MegaMenu from './MegaMenu.vue';
 
+const page = usePage();
 const isMobileMenuOpen = ref(false);
+const activeMenuSlug = ref(null);
+
+const menuData = computed(() => page.props.storefront_menu || { categories: [], tags: [], featured_products: [] });
 
 const navItems = [
     { name: 'Women', slug: 'women', children: ['New Arrivals', 'Shoes', 'Clothing'] },
     { name: 'Men', slug: 'men', children: ['New Arrivals', 'Shoes', 'Clothing'] },
-    { name: 'Kids', slug: 'kid', children: ['New Arrivals', 'Shoes', 'Clothing'] },
+    { name: 'Kids', slug: 'kids', children: ['New Arrivals', 'Shoes', 'Clothing'] },
     { name: 'New Arrivals', slug: 'new-arrivals', children: ['This Week', 'Sustainability', 'Collaborations'] }
 ];
+
+const resolveTopLevelHref = (item) => {
+    if (item.slug === 'new-arrivals') {
+        return route('storefront.index', { sort: 'latest' });
+    }
+
+    const keywords = item.slug === 'kids' ? ['kids', 'kid'] : [item.slug];
+    const matchedCat = menuData.value.categories?.find((c) =>
+        keywords.includes(c.slug?.toLowerCase()) || keywords.includes(c.name?.toLowerCase())
+    );
+    if (matchedCat) {
+        return route('storefront.index', { category: matchedCat.slug });
+    }
+
+    const matchedTag = menuData.value.tags?.find((t) =>
+        keywords.includes(t.slug?.toLowerCase()) || keywords.includes(t.name?.toLowerCase())
+    );
+    if (matchedTag) {
+        return route('storefront.index', { tag: matchedTag.slug });
+    }
+
+    return route('storefront.index', { search: item.name });
+};
+
+const closeMegaMenu = () => {
+    activeMenuSlug.value = null;
+};
 </script>
 
 <template>
@@ -26,12 +57,23 @@ const navItems = [
                 </div>
 
                 <nav class="hidden md:flex justify-center items-center space-x-4 h-full">
-                    <div v-for="item in navItems" :key="item.slug" class="group h-full flex items-center">
-                        <button
-                            class="text-xs font-normal tracking-normal text-zinc-700 hover:text-black transition-colors duration-300 h-full px-3">
+                    <div
+                        v-for="item in navItems"
+                        :key="item.slug"
+                        @mouseenter="activeMenuSlug = item.slug"
+                        @mouseleave="activeMenuSlug = null"
+                        class="h-full flex items-center">
+                        <Link
+                            :href="resolveTopLevelHref(item)"
+                            @click="closeMegaMenu"
+                            class="text-xs font-normal tracking-normal text-zinc-700 hover:text-black transition-colors duration-300 h-full px-3 flex items-center">
                             {{ item.name }}
-                        </button>
-                        <MegaMenu :item="item" />
+                        </Link>
+                        <MegaMenu
+                            v-show="activeMenuSlug === item.slug"
+                            :item="item"
+                            @navigate="closeMegaMenu"
+                        />
                     </div>
                 </nav>
 
@@ -40,7 +82,9 @@ const navItems = [
                         <div class="hidden md:block">
                             <SearchBar />
                         </div>
-                        <Link :href="route('login')"
+                        <Link
+                            :href="$page.props.auth?.user ? route('dashboard') : route('login')"
+                            :title="$page.props.auth?.user ? 'Dashboard' : 'Sign in'"
                             class="hidden md:block text-zinc-700 hover:text-black transition-colors duration-200">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">

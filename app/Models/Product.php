@@ -62,4 +62,9 @@ class Product extends Model
     {
         return $this->hasMany(ProductAttribute::class);
     }
+    
+    public function inquiries(): HasMany
+    {
+        return $this->hasMany(Inquiry::class);
+    }
 }

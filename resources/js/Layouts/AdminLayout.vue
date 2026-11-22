@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import Logo from '@/Components/Logo.vue'
 import RecentActivities from '@/Components/RecentActivities.vue'
@@ -23,12 +23,12 @@ import {
   LayoutDashboard,
   Package,
   Bell,
+  MessageSquare,
   Megaphone,
   ChevronDown
 } from 'lucide-vue-next'
 
 const page = usePage()
-
 const openMenus = ref({
   Inventory: true,
 })
@@ -36,6 +36,8 @@ const openMenus = ref({
 const toggleMenu = (name) => {
   openMenus.value[name] = !openMenus.value[name]
 }
+
+const adminBadges = computed(() => page.props.admin_badges || { unresolved_alerts: 0, new_inquiries: 0 })
 
 const navGroups = [
   {
@@ -54,7 +56,8 @@ const navGroups = [
           { name: 'Tags', href: '/tags' },
         ],
       },
-      { name: 'Alerts', href: '/inventory/alerts', icon: Bell },
+      { name: 'Alerts', href: '/inventory/alerts', icon: Bell, badgeKey: 'unresolved_alerts' },
+      { name: 'Inquiries', href: '/inquiries', icon: MessageSquare, badgeKey: 'new_inquiries' },
       { name: 'Announcements', href: '/announcements', icon: Megaphone },
     ]
   }
@@ -162,7 +165,6 @@ const isItemActive = (item) => {
                     </div>
                   </template>
 
-                  <!-- Standard Top-Level Item -->
                   <SidebarMenuButton
                     v-else
                     as-child
@@ -173,19 +175,27 @@ const isItemActive = (item) => {
                         ? '!bg-slate-200 !text-slate-900 dark:!bg-zinc-800 dark:!text-zinc-100 font-semibold'
                         : 'text-slate-600 hover:!bg-slate-100 hover:!text-slate-900 dark:text-zinc-400 dark:hover:!bg-zinc-800/60 dark:hover:!text-zinc-100'
                     ]">
-                    <Link
+                  <Link
                       :href="item.href"
-                      class="flex items-center gap-3 px-3 py-2 text-[13px] font-medium tracking-tight">
-                      <component
-                        :is="item.icon"
-                        class="h-4 w-4 shrink-0 transition-colors"
-                        :class="[
-                          isItemActive(item)
-                            ? '!text-slate-900 dark:!text-zinc-100'
-                            : 'text-slate-400 dark:text-zinc-500 group-hover:text-slate-700 dark:group-hover:text-zinc-200'
-                        ]" />
-                      <span>{{ item.name }}</span>
-                    </Link>
+                      class="flex items-center justify-between gap-2 px-3 py-2 text-[13px] font-medium tracking-tight">
+                      <span class="flex items-center gap-3 min-w-0">
+                        <component
+                          :is="item.icon"
+                          class="h-4 w-4 shrink-0 transition-colors"
+                          :class="[
+                            isItemActive(item)
+                              ? '!text-slate-900 dark:!text-zinc-100'
+                              : 'text-slate-400 dark:text-zinc-500 group-hover:text-slate-700 dark:group-hover:text-zinc-200'
+                          ]" />
+                        <span class="truncate">{{ item.name }}</span>
+                      </span>
+
+                      <span
+                        v-if="item.badgeKey && adminBadges[item.badgeKey] > 0"
+                        class="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 dark:bg-zinc-800 dark:text-zinc-200">
+                        {{ adminBadges[item.badgeKey] > 99 ? '99+' : adminBadges[item.badgeKey] }}
+                      </span>
+                  </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>

@@ -1,14 +1,28 @@
 <script setup>
-import { Link } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import SearchBar from '@/Components/SearchBar.vue';
 
 const suggestions = [
-    { label: 'Heavyweight Tees', url: '#' },
-    { label: 'Essential Runners', url: '#' },
-    { label: 'Minimalist Accessories', url: '#' },
-    { label: 'Studio Collection', url: '#' },
-    { label: 'Summer Drops', url: '#' }
+    { label: 'Heavyweight Tees', query: 'Tee' },
+    { label: 'Essential Runners', query: 'Runner' },
+    { label: 'Minimalist Accessories', query: 'Minimalist' },
+    { label: 'Studio Collection', query: 'Studio' },
+    { label: 'Summer Drops', query: 'Summer' }
 ];
+
+const searchCatalog = (query) => {
+    router.get(
+        route('storefront.index'),
+        { search: query },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
+            },
+        }
+    );
+};
 </script>
 
 <template>
@@ -16,7 +30,7 @@ const suggestions = [
         class="relative w-full py-10 sm:py-12 overflow-hidden min-h-[500px] md:min-h-[550px] flex flex-col justify-between border-y border-zinc-900 px-5 sm:px-6 lg:px-10 bg-zinc-950">
 
         <div class="absolute inset-0 z-0">
-            <img src="images/brands/banner.jpg" alt="GreatBuy Originals Lifestyle"
+            <img src="/images/brands/banner.jpg" alt="GreatBuy Originals Lifestyle"
                 class="w-full h-full object-cover object-center brightness-[0.75] contrast-125" />
             <div class="absolute inset-0 bg-gradient-to-br from-black/80 via-black/20 to-transparent"></div>
         </div>
@@ -38,10 +52,14 @@ const suggestions = [
                 <div class="flex flex-wrap gap-x-3.5 sm:gap-x-5 gap-y-2 items-center">
                     <span
                         class="text-[8px] sm:text-[10px] uppercase tracking-widest text-white/40 font-bold">Suggestions:</span>
-                    <Link v-for="item in suggestions" :key="item.label" :href="item.url"
+                    <button
+                        v-for="item in suggestions"
+                        :key="item.label"
+                        type="button"
+                        @click="searchCatalog(item.query)"
                         class="text-[10px] sm:text-[11px] text-white font-medium hover:text-zinc-400 transition-colors duration-300">
                         {{ item.label }}
-                    </Link>
+                    </button>
                 </div>
             </div>
         </div>
@@ -54,10 +72,14 @@ const suggestions = [
             </div>
 
             <div class="flex flex-wrap gap-x-4 sm:gap-x-8 gap-y-2.5 sm:gap-y-4 justify-end">
-                <Link v-for="item in suggestions" :key="item.label" :href="item.url"
+                <button
+                    v-for="item in suggestions"
+                    :key="item.label"
+                    type="button"
+                    @click="searchCatalog(item.query)"
                     class="animated-link text-xs sm:text-sm text-white font-medium relative py-1">
                     {{ item.label }}
-                </Link>
+                </button>
             </div>
         </div>
 
