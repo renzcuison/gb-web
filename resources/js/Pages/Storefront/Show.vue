@@ -109,6 +109,7 @@ const resetInquiryState = () => {
 </script>
 
 <template>
+
     <Head :title="product.name" />
 
     <div class="min-h-screen bg-white text-zinc-900 flex flex-col">
@@ -121,9 +122,7 @@ const resetInquiryState = () => {
                     Storefront
                 </Link>
                 <span v-if="product.category">/</span>
-                <Link
-                    v-if="product.category"
-                    :href="route('storefront.index', { category: product.category.slug })"
+                <Link v-if="product.category" :href="route('storefront.index', { category: product.category.slug })"
                     class="hover:text-black">
                     {{ product.category.name }}
                 </Link>
@@ -131,9 +130,9 @@ const resetInquiryState = () => {
                 <span class="text-zinc-900 truncate">{{ product.name }}</span>
             </nav>
 
-            <div class="flex flex-col lg:flex-row gap-8 lg:gap-12 items-stretch">
+            <div class="flex flex-col lg:flex-row gap-8 lg:gap-12 items-stretch pb-8">
                 <div class="flex flex-col sm:flex-row gap-2.5 items-start shrink-0">
-                    <div class="w-full sm:w-auto sm:h-[calc(100vh-145px)] sm:min-h-[480px] sm:max-h-[720px] aspect-[4/5] bg-zinc-100 rounded-[1px] overflow-hidden shrink-0">
+                    <div class="w-full sm:w-auto sm:h-[calc(100dvh-185px)] sm:min-h-[480px] aspect-[4/5] bg-zinc-100 rounded-[1px] overflow-hidden shrink-0">
                         <img
                             v-if="activeImage"
                             :src="activeImage"
@@ -149,7 +148,7 @@ const resetInquiryState = () => {
 
                     <div
                         v-if="mediaList.length > 1"
-                        class="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-[calc(100vh-145px)] shrink-0">
+                        class="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-[calc(100dvh-185px)] shrink-0">
                         <button
                             v-for="(item, idx) in mediaList"
                             :key="item.id"
@@ -166,15 +165,17 @@ const resetInquiryState = () => {
                     </div>
                 </div>
 
-                <div class="flex-1 w-full flex justify-center lg:h-[calc(100vh-145px)] lg:min-h-[480px] lg:max-h-[720px] lg:overflow-y-auto">
+                <div class="flex-1 w-full flex justify-center lg:h-[calc(100dvh-185px)] lg:min-h-[480px] lg:overflow-y-auto">
                     <div class="w-full max-w-lg flex flex-col justify-between space-y-4 h-full">
                         <div class="flex flex-col space-y-3.5">
                             <div class="flex flex-col space-y-1.5">
-                                <span class="text-[11px] uppercase tracking-[0.35em] text-zinc-400 font-bold leading-none">
+                                <span
+                                    class="text-[11px] uppercase tracking-[0.35em] text-zinc-400 font-bold leading-none">
                                     {{ product.brand?.name || product.category?.name || 'GreatBuy Originals' }}
                                 </span>
 
-                                <h1 class="text-2xl sm:text-3xl uppercase tracking-wide text-zinc-900 font-bold leading-tight pt-0.5">
+                                <h1
+                                    class="text-2xl sm:text-3xl uppercase tracking-wide text-zinc-900 font-bold leading-tight pt-0.5">
                                     {{ product.name }}
                                 </h1>
 
@@ -192,12 +193,8 @@ const resetInquiryState = () => {
                                 </div>
 
                                 <div class="flex flex-wrap gap-2">
-                                    <button
-                                        v-for="variant in variants"
-                                        :key="variant.id"
-                                        type="button"
-                                        @click="selectedVariantId = variant.id"
-                                        :class="[
+                                    <button v-for="variant in variants" :key="variant.id" type="button"
+                                        @click="selectedVariantId = variant.id" :class="[
                                             'px-3.5 py-1.5 text-xs border border-solid rounded-none cursor-pointer',
                                             selectedVariant?.id === variant.id
                                                 ? 'border-zinc-900 bg-zinc-900 text-white font-medium'
@@ -228,9 +225,7 @@ const resetInquiryState = () => {
                                     Specifications
                                 </h2>
                                 <div class="space-y-1 text-xs">
-                                    <div
-                                        v-for="attr in customerAttributes"
-                                        :key="attr.id"
+                                    <div v-for="attr in customerAttributes" :key="attr.id"
                                         class="flex justify-between gap-4">
                                         <span class="text-zinc-400">{{ attr.name }}</span>
                                         <span class="text-zinc-900 text-right">{{ attr.value }}</span>
@@ -239,9 +234,7 @@ const resetInquiryState = () => {
                             </div>
 
                             <div v-if="product.tags && product.tags.length > 0" class="flex flex-wrap gap-3">
-                                <Link
-                                    v-for="t in product.tags"
-                                    :key="t.id"
+                                <Link v-for="t in product.tags" :key="t.id"
                                     :href="route('storefront.index', { tag: t.slug })"
                                     class="text-xs text-zinc-400 hover:text-black">
                                     #{{ t.name }}
@@ -261,8 +254,7 @@ const resetInquiryState = () => {
                                 </p>
                             </div>
 
-                            <div
-                                v-if="inquirySubmitted"
+                            <div v-if="inquirySubmitted"
                                 class="border border-zinc-900 rounded-none p-6 space-y-4 bg-white">
                                 <span class="text-[10px] uppercase tracking-[0.3em] text-zinc-400 font-bold block">
                                     Inquiry Received
@@ -276,44 +268,37 @@ const resetInquiryState = () => {
                                     has been logged. A member of our team will respond to your email shortly.
                                 </p>
                                 <div>
-                                    <button
-                                        type="button"
-                                        @click="resetInquiryState"
+                                    <button type="button" @click="resetInquiryState"
                                         class="text-xs text-zinc-900 font-medium hover:text-zinc-500 cursor-pointer">
                                         Send another inquiry
                                     </button>
                                 </div>
                             </div>
 
-                            <form v-else @submit.prevent="submitInquiry" class="flex-1 flex flex-col justify-between space-y-3">
+                            <form v-else @submit.prevent="submitInquiry"
+                                class="flex-1 flex flex-col justify-between space-y-3">
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div class="space-y-1">
-                                        <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
+                                        <label
+                                            class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
                                             Full Name *
                                         </label>
-                                        <input
-                                            v-model="inquiryForm.customer_name"
-                                            type="text"
-                                            required
+                                        <input v-model="inquiryForm.customer_name" type="text" required
                                             placeholder="Juan Dela Cruz"
-                                            class="w-full py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0"
-                                        />
+                                            class="w-full py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0" />
                                         <p v-if="inquiryForm.errors.customer_name" class="text-[11px] text-rose-600">
                                             {{ inquiryForm.errors.customer_name }}
                                         </p>
                                     </div>
 
                                     <div class="space-y-1">
-                                        <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
+                                        <label
+                                            class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
                                             Email Address *
                                         </label>
-                                        <input
-                                            v-model="inquiryForm.customer_email"
-                                            type="email"
-                                            required
+                                        <input v-model="inquiryForm.customer_email" type="email" required
                                             placeholder="name@example.com"
-                                            class="w-full py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0"
-                                        />
+                                            class="w-full py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0" />
                                         <p v-if="inquiryForm.errors.customer_email" class="text-[11px] text-rose-600">
                                             {{ inquiryForm.errors.customer_email }}
                                         </p>
@@ -322,32 +307,26 @@ const resetInquiryState = () => {
 
                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                     <div class="sm:col-span-2 space-y-1">
-                                        <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
+                                        <label
+                                            class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
                                             Phone / Viber (Optional)
                                         </label>
-                                        <input
-                                            v-model="inquiryForm.customer_phone"
-                                            type="text"
+                                        <input v-model="inquiryForm.customer_phone" type="text"
                                             placeholder="+63 900 000 0000"
-                                            class="w-full py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0"
-                                        />
+                                            class="w-full py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0" />
                                         <p v-if="inquiryForm.errors.customer_phone" class="text-[11px] text-rose-600">
                                             {{ inquiryForm.errors.customer_phone }}
                                         </p>
                                     </div>
 
                                     <div class="space-y-1">
-                                        <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
+                                        <label
+                                            class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
                                             Quantity *
                                         </label>
-                                        <input
-                                            v-model.number="inquiryForm.quantity"
-                                            type="number"
-                                            min="1"
-                                            max="999"
+                                        <input v-model.number="inquiryForm.quantity" type="number" min="1" max="999"
                                             required
-                                            class="w-full py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-0"
-                                        />
+                                            class="w-full py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-0" />
                                         <p v-if="inquiryForm.errors.quantity" class="text-[11px] text-rose-600">
                                             {{ inquiryForm.errors.quantity }}
                                         </p>
@@ -355,15 +334,13 @@ const resetInquiryState = () => {
                                 </div>
 
                                 <div class="flex-1 flex flex-col space-y-1 min-h-[76px]">
-                                    <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
+                                    <label
+                                        class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
                                         Message *
                                     </label>
-                                    <textarea
-                                        v-model="inquiryForm.message"
-                                        required
+                                    <textarea v-model="inquiryForm.message" required
                                         placeholder="Ask about sizing, stock availability, bulk pricing, or dispatch options..."
-                                        class="w-full flex-1 py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0 resize-none"
-                                    ></textarea>
+                                        class="w-full flex-1 py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0 resize-none"></textarea>
                                     <p v-if="inquiryForm.errors.message" class="text-[11px] text-rose-600">
                                         {{ inquiryForm.errors.message }}
                                     </p>
@@ -374,9 +351,7 @@ const resetInquiryState = () => {
                                         Response within 1 business day.
                                     </span>
 
-                                    <button
-                                        type="submit"
-                                        :disabled="inquiryForm.processing"
+                                    <button type="submit" :disabled="inquiryForm.processing"
                                         class="px-7 py-3 bg-zinc-900 hover:bg-black text-white text-xs uppercase tracking-[0.25em] font-medium rounded-none disabled:opacity-50 cursor-pointer">
                                         {{ inquiryForm.processing ? 'Sending...' : 'Submit Inquiry' }}
                                     </button>
@@ -396,8 +371,7 @@ const resetInquiryState = () => {
                         <h2 class="text-xl sm:text-2xl uppercase tracking-wide text-zinc-900 font-bold leading-none">
                             Related Pieces
                         </h2>
-                        <Link
-                            :href="route('storefront.index')"
+                        <Link :href="route('storefront.index')"
                             class="text-[13px] text-zinc-900 font-medium hover:text-zinc-500">
                             View all
                         </Link>
@@ -405,11 +379,7 @@ const resetInquiryState = () => {
                 </div>
 
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-x-1 gap-y-10 lg:gap-x-1.5">
-                    <ProductCard
-                        v-for="item in relatedProducts"
-                        :key="item.id"
-                        :product="item"
-                    />
+                    <ProductCard v-for="item in relatedProducts" :key="item.id" :product="item" />
                 </div>
             </section>
         </main>
