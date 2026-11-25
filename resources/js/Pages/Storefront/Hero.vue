@@ -1,14 +1,84 @@
 <script setup>
+import { computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 
-const brands = [
-    { name: 'Adidas', slug: 'adidas', color: 'bg-zinc-100', image: '/images/brands/adidas.jpg', featured: true },
-    { name: 'Asics', slug: 'asics', color: 'bg-zinc-50', image: '/images/brands/asics.jpg' },
-    { name: 'New Balance', slug: 'new-balance', color: 'bg-zinc-200', image: '/images/brands/new-balance.jpg', tall: true },
-    { name: 'Nike', slug: 'nike', color: 'bg-zinc-50', image: '/images/brands/nike.jpg' },
-    { name: 'Veja', slug: 'veja', color: 'bg-zinc-200', image: '/images/brands/veja.jpg' },
-    { name: 'Puma', slug: 'puma', color: 'bg-zinc-100', image: '/images/brands/puma.jpg' },
+const props = defineProps({
+    brands: {
+        type: Array,
+        default: () => [],
+    },
+});
+
+const curatedTiles = [
+    {
+        name: 'Guess',
+        fallbackSlug: 'guess',
+        aliases: ['guess'],
+        color: 'bg-zinc-100',
+        image: '/images/brands/guess.jpg',
+        objectPosition: 'center center',
+        layout: 'col-span-1 aspect-[2/3] md:aspect-auto md:col-span-1 md:row-span-2',
+    },
+    {
+        name: 'Bath & Body Works',
+        fallbackSlug: 'bath-body-works',
+        aliases: ['bath & body works', 'bath and body works', 'bbw'],
+        color: 'bg-zinc-100',
+        image: '/images/brands/bath-and-body-works.jpg',
+        objectPosition: 'center 35%',
+        layout: 'col-span-1 aspect-[4/5] md:aspect-auto md:col-span-1 md:row-span-1',
+    },
+    {
+        name: "Victoria's Secret",
+        fallbackSlug: 'victorias-secret',
+        aliases: ["victoria's secret", 'victorias secret', 'vs'],
+        color: 'bg-zinc-900',
+        image: '/images/brands/victorias-secret.jpg',
+        objectPosition: 'center center',
+        layout: 'col-span-2 aspect-[4/3] md:aspect-auto md:col-span-1 md:row-span-1',
+    },
+    {
+        name: 'Lacoste',
+        fallbackSlug: 'lacoste',
+        aliases: ['lacoste'],
+        color: 'bg-zinc-100',
+        image: '/images/brands/lacoste.jpg',
+        objectPosition: 'center center',
+        layout: 'col-span-1 aspect-[2/3] md:aspect-auto md:col-span-1 md:row-span-2',
+    },
+    {
+        name: 'Karl Lagerfeld',
+        fallbackSlug: 'karl-lagerfeld',
+        aliases: ['karl lagerfeld'],
+        color: 'bg-zinc-100',
+        image: '/images/brands/karl-lagerfeld.jpg',
+        objectPosition: 'left center',
+        layout: 'col-span-1 aspect-[4/5] md:aspect-auto md:col-span-1 md:row-span-1',
+    },
+    {
+        name: 'Michael Kors',
+        fallbackSlug: 'michael-kors',
+        aliases: ['michael kors', 'mk'],
+        color: 'bg-zinc-100',
+        image: '/images/brands/michael-kors.jpg',
+        objectPosition: 'center 55%',
+        layout: 'col-span-2 aspect-[4/3] sm:col-span-1 md:aspect-auto md:col-span-1 md:row-span-1',
+    },
 ];
+
+const tiles = computed(() =>
+    curatedTiles.map((tile) => {
+        const matchedBrand = props.brands.find((b) => {
+            const lowerName = (b.name || '').trim().toLowerCase();
+            return tile.aliases.includes(lowerName) || b.slug === tile.fallbackSlug;
+        });
+
+        return {
+            ...tile,
+            slug: matchedBrand?.slug || tile.fallbackSlug,
+        };
+    })
+);
 
 const shopBrand = (slug) => {
     router.get(
@@ -23,60 +93,46 @@ const shopBrand = (slug) => {
         }
     );
 };
-
-const getDynamicClasses = (brand, index) => {
-    const isLast = index === brands.length - 1;
-
-    let desktop = 'md:col-span-1 md:row-span-1';
-    if (brand.featured) desktop = 'md:col-span-2 md:row-span-2';
-    if (brand.tall) desktop = 'md:col-span-1 md:row-span-2';
-
-    if (isLast) desktop = 'md:col-span-3 md:row-span-1';
-
-    let mobile = 'col-span-1 row-span-1';
-    if (brand.featured) mobile = 'col-span-2 row-span-2';
-    if (brand.tall) mobile = 'col-span-1 row-span-2';
-
-    if (isLast && index % 2 === 0 && !brand.featured) {
-        mobile = 'col-span-2 row-span-1';
-    }
-
-    return `${mobile} ${desktop}`;
-};
 </script>
 
 <template>
-    <section class="w-full border-b border-zinc-200 overflow-hidden">
-        <div class="grid grid-cols-2 grid-flow-dense md:grid-cols-4 md:grid-rows-3 h-[calc(100vh-6.5rem)] w-full gap-0">
-
+    <section class="w-full bg-white border-b border-zinc-200 overflow-hidden">
+        <div
+            class="grid grid-cols-2 grid-flow-dense md:grid-cols-4 md:grid-rows-2 md:h-[calc(100vh-6.5rem)] w-full gap-0">
             <button
-                v-for="(brand, index) in brands"
-                :key="brand.slug"
+                v-for="tile in tiles"
+                :key="tile.name"
                 type="button"
-                @click="shopBrand(brand.slug)"
+                @click="shopBrand(tile.slug)"
                 :class="[
-                    getDynamicClasses(brand, index),
-                    brand.color,
-                    'group relative overflow-hidden border-r border-b border-zinc-200 last:border-r-0 text-left cursor-pointer'
+                    tile.layout,
+                    tile.color,
+                    'group relative overflow-hidden border-r border-b border-zinc-200 text-left cursor-pointer'
                 ]">
                 <div class="absolute inset-0 z-0 overflow-hidden">
-                    <img :src="brand.image" :alt="brand.name"
-                        class="w-full h-full object-cover object-center transition-transform duration-[1500ms] cubic-bezier(0.165, 0.84, 0.44, 1) group-hover:scale-105" />
+                    <img
+                        :src="tile.image"
+                        :alt="tile.name"
+                        :style="{ objectPosition: tile.objectPosition }"
+                        class="w-full h-full object-cover transition-transform duration-[1500ms] ease-out group-hover:scale-105"
+                    />
                 </div>
 
                 <div
-                    class="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 backdrop-blur-sm bg-black/20 transition-opacity duration-700 pointer-events-none">
+                    class="absolute inset-x-0 bottom-0 h-24 z-10 bg-gradient-to-t from-black/55 via-black/15 to-transparent pointer-events-none">
                 </div>
 
                 <div
-                    class="absolute inset-0 z-20 p-6 md:p-10 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-all duration-500 ease-out">
-                    <h2
-                        class="text-[10px] md:text-xs uppercase tracking-[0.4em] text-white font-bold whitespace-nowrap transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                        Shop {{ brand.name }}
+                    class="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 backdrop-blur-[2px] bg-black/25 transition-opacity duration-500 pointer-events-none">
+                </div>
+
+                <div class="absolute inset-x-0 bottom-0 z-20 p-5 md:p-6 flex items-end">
+                    <h2 class="text-[11px] md:text-xs uppercase tracking-[0.3em] text-white font-semibold">
+                        <span class="group-hover:hidden">{{ tile.name }}</span>
+                        <span class="hidden group-hover:inline">Shop {{ tile.name }}</span>
                     </h2>
                 </div>
             </button>
-
         </div>
     </section>
 </template>
