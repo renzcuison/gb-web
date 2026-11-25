@@ -81,9 +81,13 @@ const availabilityText = computed(() => {
     return `In Stock (${qty} available)`;
 });
 
-const scrollToInquiry = () => {
-    document.getElementById('inquiry-section')?.scrollIntoView({ behavior: 'smooth' });
-};
+const customerAttributes = computed(() => {
+    const blockedKeywords = ['sku', 'batch', 'eta', 'supplier', 'cost'];
+    return (props.product.attributes || []).filter((attr) => {
+        const label = String(attr.name || '').trim().toLowerCase();
+        return !blockedKeywords.some((keyword) => label.includes(keyword));
+    });
+});
 
 const submitInquiry = () => {
     inquiryForm.product_id = props.product.id;
@@ -111,25 +115,25 @@ const resetInquiryState = () => {
         <AnnouncementBar />
         <Header />
 
-        <main class="flex-1 max-w-full w-full mx-auto px-6 lg:px-10 pt-8 pb-20 space-y-20">
+        <main class="flex-1 max-w-full w-full mx-auto px-6 lg:px-10 pt-4 pb-20 space-y-5">
             <nav class="flex items-center space-x-2 text-xs text-zinc-400">
-                <Link :href="route('storefront.index')" class="text-zinc-600 hover:text-black transition-colors">
+                <Link :href="route('storefront.index')" class="text-zinc-600 hover:text-black">
                     Storefront
                 </Link>
                 <span v-if="product.category">/</span>
                 <Link
                     v-if="product.category"
                     :href="route('storefront.index', { category: product.category.slug })"
-                    class="hover:text-black transition-colors">
+                    class="hover:text-black">
                     {{ product.category.name }}
                 </Link>
                 <span>/</span>
                 <span class="text-zinc-900 truncate">{{ product.name }}</span>
             </nav>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
-                <div class="lg:col-span-7 flex flex-col sm:flex-row gap-3">
-                    <div class="flex-1 aspect-[4/5] bg-zinc-100 rounded-[1px] overflow-hidden">
+            <div class="flex flex-col lg:flex-row gap-8 lg:gap-12 items-stretch">
+                <div class="flex flex-col sm:flex-row gap-2.5 items-start shrink-0">
+                    <div class="w-full sm:w-auto sm:h-[calc(100vh-145px)] sm:min-h-[480px] sm:max-h-[720px] aspect-[4/5] bg-zinc-100 rounded-[1px] overflow-hidden shrink-0">
                         <img
                             v-if="activeImage"
                             :src="activeImage"
@@ -145,14 +149,14 @@ const resetInquiryState = () => {
 
                     <div
                         v-if="mediaList.length > 1"
-                        class="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-[640px] shrink-0">
+                        class="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-[calc(100vh-145px)] shrink-0">
                         <button
                             v-for="(item, idx) in mediaList"
                             :key="item.id"
                             type="button"
                             @click="activeImageIndex = idx"
                             :class="[
-                                'w-16 h-20 sm:w-20 sm:h-24 bg-zinc-100 rounded-[1px] overflow-hidden shrink-0 transition-opacity',
+                                'w-14 h-[70px] sm:w-16 sm:h-20 bg-zinc-100 rounded-[1px] overflow-hidden shrink-0 cursor-pointer',
                                 activeImageIndex === idx
                                     ? 'ring-1 ring-zinc-900 opacity-100'
                                     : 'opacity-50 hover:opacity-100',
@@ -162,260 +166,228 @@ const resetInquiryState = () => {
                     </div>
                 </div>
 
-                <div class="lg:col-span-5 flex flex-col space-y-6 lg:sticky lg:top-24">
-                    <div class="flex flex-col space-y-2 border-b border-zinc-100 pb-6">
-                        <span class="text-[12px] uppercase tracking-[0.4em] text-zinc-400 font-bold leading-none">
-                            {{ product.brand?.name || product.category?.name || 'GreatBuy Originals' }}
-                        </span>
+                <div class="flex-1 w-full flex justify-center lg:h-[calc(100vh-145px)] lg:min-h-[480px] lg:max-h-[720px] lg:overflow-y-auto">
+                    <div class="w-full max-w-lg flex flex-col justify-between space-y-4 h-full">
+                        <div class="flex flex-col space-y-3.5">
+                            <div class="flex flex-col space-y-1.5">
+                                <span class="text-[11px] uppercase tracking-[0.35em] text-zinc-400 font-bold leading-none">
+                                    {{ product.brand?.name || product.category?.name || 'GreatBuy Originals' }}
+                                </span>
 
-                        <h1 class="text-2xl sm:text-3xl uppercase tracking-wide text-zinc-900 font-bold leading-tight pt-1">
-                            {{ product.name }}
-                        </h1>
+                                <h1 class="text-2xl sm:text-3xl uppercase tracking-wide text-zinc-900 font-bold leading-tight pt-0.5">
+                                    {{ product.name }}
+                                </h1>
 
-                        <div class="flex items-baseline justify-between pt-1">
-                            <span class="text-lg text-zinc-900 font-bold price-tag">
-                                ₱{{ activePrice }}
-                            </span>
-                            <span v-if="selectedVariant?.sku" class="text-xs text-zinc-400">
-                                SKU {{ selectedVariant.sku }}
-                            </span>
-                        </div>
-                    </div>
+                                <div class="pt-0.5">
+                                    <span class="text-lg text-zinc-900 font-bold price-tag">
+                                        ₱{{ activePrice }}
+                                    </span>
+                                </div>
+                            </div>
 
-                    <div v-if="variants.length > 0" class="flex flex-col space-y-3">
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="uppercase tracking-[0.2em] text-zinc-400 font-semibold">Option</span>
-                            <span class="text-zinc-700">{{ selectedVariant?.variant_label }}</span>
-                        </div>
+                            <div v-if="variants.length > 0" class="flex flex-col space-y-2">
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="uppercase tracking-[0.2em] text-zinc-400 font-semibold">Option</span>
+                                    <span class="text-zinc-700">{{ selectedVariant?.variant_label }}</span>
+                                </div>
 
-                        <div class="flex flex-wrap gap-2">
-                            <button
-                                v-for="variant in variants"
-                                :key="variant.id"
-                                type="button"
-                                @click="selectedVariantId = variant.id"
-                                :class="[
-                                    'px-4 py-2.5 text-xs border border-solid rounded-none transition-colors',
-                                    selectedVariant?.id === variant.id
-                                        ? 'border-zinc-900 bg-zinc-900 text-white font-medium'
-                                        : variant.stock_qty <= 0
-                                            ? 'border-zinc-200 bg-zinc-50 text-zinc-400 hover:border-zinc-400'
-                                            : 'border-zinc-300 bg-white text-zinc-900 hover:border-zinc-900',
-                                ]">
-                                {{ variant.variant_label }}
-                            </button>
-                        </div>
-                    </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button
+                                        v-for="variant in variants"
+                                        :key="variant.id"
+                                        type="button"
+                                        @click="selectedVariantId = variant.id"
+                                        :class="[
+                                            'px-3.5 py-1.5 text-xs border border-solid rounded-none cursor-pointer',
+                                            selectedVariant?.id === variant.id
+                                                ? 'border-zinc-900 bg-zinc-900 text-white font-medium'
+                                                : variant.stock_qty <= 0
+                                                    ? 'border-zinc-200 bg-zinc-50 text-zinc-400 hover:border-zinc-400'
+                                                    : 'border-zinc-300 bg-white text-zinc-900 hover:border-zinc-900',
+                                        ]">
+                                        {{ variant.variant_label }}
+                                    </button>
+                                </div>
+                            </div>
 
-                    <p class="text-xs text-zinc-500">
-                        {{ availabilityText }}
-                    </p>
+                            <p class="text-xs text-zinc-500">
+                                {{ availabilityText }}
+                            </p>
 
-                    <button
-                        type="button"
-                        @click="scrollToInquiry"
-                        class="w-full py-4 px-6 bg-zinc-900 hover:bg-black text-white text-xs uppercase tracking-[0.25em] font-medium rounded-none transition-colors">
-                        Inquire About This Piece
-                    </button>
+                            <div v-if="product.description" class="space-y-1">
+                                <h2 class="text-[10px] uppercase tracking-[0.3em] text-zinc-400 font-bold">
+                                    Details
+                                </h2>
+                                <p class="text-xs text-zinc-600 font-normal leading-relaxed whitespace-pre-line">
+                                    {{ product.description }}
+                                </p>
+                            </div>
 
-                    <div v-if="product.description" class="border-t border-zinc-100 pt-6 space-y-2">
-                        <h2 class="text-[10px] uppercase tracking-[0.3em] text-zinc-400 font-bold">
-                            Details
-                        </h2>
-                        <p class="text-sm text-zinc-600 font-normal leading-relaxed whitespace-pre-line">
-                            {{ product.description }}
-                        </p>
-                    </div>
+                            <div v-if="customerAttributes.length > 0" class="space-y-1.5">
+                                <h2 class="text-[10px] uppercase tracking-[0.3em] text-zinc-400 font-bold">
+                                    Specifications
+                                </h2>
+                                <div class="space-y-1 text-xs">
+                                    <div
+                                        v-for="attr in customerAttributes"
+                                        :key="attr.id"
+                                        class="flex justify-between gap-4">
+                                        <span class="text-zinc-400">{{ attr.name }}</span>
+                                        <span class="text-zinc-900 text-right">{{ attr.value }}</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div v-if="product.attributes && product.attributes.length > 0" class="border-t border-zinc-100 pt-6 space-y-3">
-                        <h2 class="text-[10px] uppercase tracking-[0.3em] text-zinc-400 font-bold">
-                            Specifications
-                        </h2>
-                        <div class="divide-y divide-zinc-100 text-xs">
-                            <div
-                                v-for="attr in product.attributes"
-                                :key="attr.id"
-                                class="flex justify-between py-2">
-                                <span class="text-zinc-400">{{ attr.name }}</span>
-                                <span class="text-zinc-900">{{ attr.value }}</span>
+                            <div v-if="product.tags && product.tags.length > 0" class="flex flex-wrap gap-3">
+                                <Link
+                                    v-for="t in product.tags"
+                                    :key="t.id"
+                                    :href="route('storefront.index', { tag: t.slug })"
+                                    class="text-xs text-zinc-400 hover:text-black">
+                                    #{{ t.name }}
+                                </Link>
                             </div>
                         </div>
-                    </div>
 
-                    <div v-if="product.tags && product.tags.length > 0" class="flex flex-wrap gap-4 pt-2">
-                        <Link
-                            v-for="t in product.tags"
-                            :key="t.id"
-                            :href="route('storefront.index', { tag: t.slug })"
-                            class="text-xs text-zinc-400 hover:text-black border-b border-transparent hover:border-black pb-0.5 transition-colors">
-                            #{{ t.name }}
-                        </Link>
+                        <div class="flex-1 flex flex-col justify-end space-y-3 pt-1">
+                            <div class="space-y-0.5">
+                                <span class="text-[10px] uppercase tracking-[0.3em] text-zinc-400 font-bold block">
+                                    Inquire About This Piece
+                                </span>
+                                <p class="text-xs text-zinc-500">
+                                    Confirm stock allocation and dispatch details for
+                                    <span class="text-zinc-900 font-medium">{{ product.name }}</span>
+                                    <span v-if="selectedVariant"> ({{ selectedVariant.variant_label }})</span>.
+                                </p>
+                            </div>
+
+                            <div
+                                v-if="inquirySubmitted"
+                                class="border border-zinc-900 rounded-none p-6 space-y-4 bg-white">
+                                <span class="text-[10px] uppercase tracking-[0.3em] text-zinc-400 font-bold block">
+                                    Inquiry Received
+                                </span>
+                                <h3 class="text-base uppercase tracking-wide text-zinc-900 font-bold">
+                                    Thank you for reaching out
+                                </h3>
+                                <p class="text-xs text-zinc-600 font-normal leading-relaxed">
+                                    Your inquiry for <span class="text-zinc-900 font-medium">{{ product.name }}</span>
+                                    <span v-if="selectedVariant"> ({{ selectedVariant.variant_label }})</span>
+                                    has been logged. A member of our team will respond to your email shortly.
+                                </p>
+                                <div>
+                                    <button
+                                        type="button"
+                                        @click="resetInquiryState"
+                                        class="text-xs text-zinc-900 font-medium hover:text-zinc-500 cursor-pointer">
+                                        Send another inquiry
+                                    </button>
+                                </div>
+                            </div>
+
+                            <form v-else @submit.prevent="submitInquiry" class="flex-1 flex flex-col justify-between space-y-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div class="space-y-1">
+                                        <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
+                                            Full Name *
+                                        </label>
+                                        <input
+                                            v-model="inquiryForm.customer_name"
+                                            type="text"
+                                            required
+                                            placeholder="Juan Dela Cruz"
+                                            class="w-full py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0"
+                                        />
+                                        <p v-if="inquiryForm.errors.customer_name" class="text-[11px] text-rose-600">
+                                            {{ inquiryForm.errors.customer_name }}
+                                        </p>
+                                    </div>
+
+                                    <div class="space-y-1">
+                                        <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
+                                            Email Address *
+                                        </label>
+                                        <input
+                                            v-model="inquiryForm.customer_email"
+                                            type="email"
+                                            required
+                                            placeholder="name@example.com"
+                                            class="w-full py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0"
+                                        />
+                                        <p v-if="inquiryForm.errors.customer_email" class="text-[11px] text-rose-600">
+                                            {{ inquiryForm.errors.customer_email }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div class="sm:col-span-2 space-y-1">
+                                        <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
+                                            Phone / Viber (Optional)
+                                        </label>
+                                        <input
+                                            v-model="inquiryForm.customer_phone"
+                                            type="text"
+                                            placeholder="+63 900 000 0000"
+                                            class="w-full py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0"
+                                        />
+                                        <p v-if="inquiryForm.errors.customer_phone" class="text-[11px] text-rose-600">
+                                            {{ inquiryForm.errors.customer_phone }}
+                                        </p>
+                                    </div>
+
+                                    <div class="space-y-1">
+                                        <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
+                                            Quantity *
+                                        </label>
+                                        <input
+                                            v-model.number="inquiryForm.quantity"
+                                            type="number"
+                                            min="1"
+                                            max="999"
+                                            required
+                                            class="w-full py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-0"
+                                        />
+                                        <p v-if="inquiryForm.errors.quantity" class="text-[11px] text-rose-600">
+                                            {{ inquiryForm.errors.quantity }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="flex-1 flex flex-col space-y-1 min-h-[76px]">
+                                    <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
+                                        Message *
+                                    </label>
+                                    <textarea
+                                        v-model="inquiryForm.message"
+                                        required
+                                        placeholder="Ask about sizing, stock availability, bulk pricing, or dispatch options..."
+                                        class="w-full flex-1 py-2 px-3 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0 resize-none"
+                                    ></textarea>
+                                    <p v-if="inquiryForm.errors.message" class="text-[11px] text-rose-600">
+                                        {{ inquiryForm.errors.message }}
+                                    </p>
+                                </div>
+
+                                <div class="flex items-center justify-between gap-4">
+                                    <span class="text-[11px] text-zinc-400">
+                                        Response within 1 business day.
+                                    </span>
+
+                                    <button
+                                        type="submit"
+                                        :disabled="inquiryForm.processing"
+                                        class="px-7 py-3 bg-zinc-900 hover:bg-black text-white text-xs uppercase tracking-[0.25em] font-medium rounded-none disabled:opacity-50 cursor-pointer">
+                                        {{ inquiryForm.processing ? 'Sending...' : 'Submit Inquiry' }}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <section id="inquiry-section" class="border-t border-zinc-100 pt-14 scroll-mt-24">
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
-                    <div class="lg:col-span-5 flex flex-col space-y-[18px]">
-                        <span class="text-[12px] uppercase tracking-[0.4em] text-zinc-400 font-bold leading-none">
-                            Direct Inquiry
-                        </span>
-                        <h2 class="text-xl sm:text-2xl uppercase tracking-wide text-zinc-900 font-bold leading-none">
-                            Request Availability
-                        </h2>
-                        <p class="text-xs text-zinc-500 font-normal leading-relaxed max-w-md">
-                            Submit your contact details and preferred quantity for
-                            <span class="text-zinc-900 font-medium">{{ product.name }}</span>
-                            <span v-if="selectedVariant"> ({{ selectedVariant.variant_label }})</span>.
-                            Our team will confirm stock allocation and dispatch details directly.
-                        </p>
-
-                        <div class="border-t border-zinc-100 pt-4 space-y-1.5 text-xs text-zinc-500">
-                            <div>
-                                <span class="text-zinc-400">Selected Piece:</span>
-                                <span class="text-zinc-900 ml-1.5">{{ product.name }}</span>
-                            </div>
-                            <div v-if="selectedVariant">
-                                <span class="text-zinc-400">Option / SKU:</span>
-                                <span class="text-zinc-900 ml-1.5">
-                                    {{ selectedVariant.variant_label }} ({{ selectedVariant.sku }})
-                                </span>
-                            </div>
-                            <div>
-                                <span class="text-zinc-400">Unit Price:</span>
-                                <span class="text-zinc-900 font-bold ml-1.5 price-tag">₱{{ activePrice }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="lg:col-span-7">
-                        <div
-                            v-if="inquirySubmitted"
-                            class="border border-zinc-900 rounded-none p-8 sm:p-10 space-y-5 bg-white">
-                            <span class="text-[10px] uppercase tracking-[0.3em] text-zinc-400 font-bold block">
-                                Inquiry Received
-                            </span>
-                            <h3 class="text-lg uppercase tracking-wide text-zinc-900 font-bold">
-                                Thank you for reaching out
-                            </h3>
-                            <p class="text-xs text-zinc-600 font-normal leading-relaxed max-w-lg">
-                                Your inquiry for <span class="text-zinc-900 font-medium">{{ product.name }}</span>
-                                <span v-if="selectedVariant"> ({{ selectedVariant.variant_label }})</span>
-                                has been logged. A member of our team will respond to your email shortly.
-                            </p>
-                            <div class="pt-2">
-                                <button
-                                    type="button"
-                                    @click="resetInquiryState"
-                                    class="text-xs text-zinc-900 font-medium border-b border-black pb-0.5">
-                                    Send another inquiry
-                                </button>
-                            </div>
-                        </div>
-
-                        <form v-else @submit.prevent="submitInquiry" class="space-y-5">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div class="space-y-1.5">
-                                    <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
-                                        Full Name *
-                                    </label>
-                                    <input
-                                        v-model="inquiryForm.customer_name"
-                                        type="text"
-                                        required
-                                        placeholder="Juan Dela Cruz"
-                                        class="w-full py-3 px-3.5 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0 transition-colors"
-                                    />
-                                    <p v-if="inquiryForm.errors.customer_name" class="text-[11px] text-rose-600">
-                                        {{ inquiryForm.errors.customer_name }}
-                                    </p>
-                                </div>
-
-                                <div class="space-y-1.5">
-                                    <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
-                                        Email Address *
-                                    </label>
-                                    <input
-                                        v-model="inquiryForm.customer_email"
-                                        type="email"
-                                        required
-                                        placeholder="name@example.com"
-                                        class="w-full py-3 px-3.5 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0 transition-colors"
-                                    />
-                                    <p v-if="inquiryForm.errors.customer_email" class="text-[11px] text-rose-600">
-                                        {{ inquiryForm.errors.customer_email }}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div class="sm:col-span-2 space-y-1.5">
-                                    <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
-                                        Phone / Viber (Optional)
-                                    </label>
-                                    <input
-                                        v-model="inquiryForm.customer_phone"
-                                        type="text"
-                                        placeholder="+63 900 000 0000"
-                                        class="w-full py-3 px-3.5 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0 transition-colors"
-                                    />
-                                    <p v-if="inquiryForm.errors.customer_phone" class="text-[11px] text-rose-600">
-                                        {{ inquiryForm.errors.customer_phone }}
-                                    </p>
-                                </div>
-
-                                <div class="space-y-1.5">
-                                    <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
-                                        Quantity *
-                                    </label>
-                                    <input
-                                        v-model.number="inquiryForm.quantity"
-                                        type="number"
-                                        min="1"
-                                        max="999"
-                                        required
-                                        class="w-full py-3 px-3.5 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-0 transition-colors"
-                                    />
-                                    <p v-if="inquiryForm.errors.quantity" class="text-[11px] text-rose-600">
-                                        {{ inquiryForm.errors.quantity }}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="space-y-1.5">
-                                <label class="block text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">
-                                    Message *
-                                </label>
-                                <textarea
-                                    v-model="inquiryForm.message"
-                                    rows="4"
-                                    required
-                                    placeholder="Ask about sizing, stock availability, bulk pricing, or dispatch options..."
-                                    class="w-full py-3 px-3.5 text-xs border border-solid border-zinc-300 rounded-none bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-0 transition-colors resize-none"
-                                ></textarea>
-                                <p v-if="inquiryForm.errors.message" class="text-[11px] text-rose-600">
-                                    {{ inquiryForm.errors.message }}
-                                </p>
-                            </div>
-
-                            <div class="pt-1 flex items-center justify-between gap-4">
-                                <span class="text-[11px] text-zinc-400">
-                                    Response within 1 business day.
-                                </span>
-
-                                <button
-                                    type="submit"
-                                    :disabled="inquiryForm.processing"
-                                    class="px-8 py-4 bg-zinc-900 hover:bg-black text-white text-xs uppercase tracking-[0.25em] font-medium rounded-none disabled:opacity-50 transition-colors">
-                                    {{ inquiryForm.processing ? 'Sending...' : 'Submit Inquiry' }}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </section>
-
-            <section v-if="relatedProducts.length > 0" class="border-t border-zinc-100 pt-14 space-y-6">
+            <section v-if="relatedProducts.length > 0" class="pt-14 space-y-6">
                 <div class="flex flex-col space-y-[18px]">
                     <span class="text-[12px] uppercase tracking-[0.4em] text-zinc-400 font-bold leading-none">
                         Discover More
@@ -426,7 +398,7 @@ const resetInquiryState = () => {
                         </h2>
                         <Link
                             :href="route('storefront.index')"
-                            class="text-[13px] text-zinc-900 font-medium border-b border-black pb-0.5">
+                            class="text-[13px] text-zinc-900 font-medium hover:text-zinc-500">
                             View all
                         </Link>
                     </div>
