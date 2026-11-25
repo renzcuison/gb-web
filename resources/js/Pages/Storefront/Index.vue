@@ -57,7 +57,7 @@ watch(
 
             <NewArrivals :items="newArrivals" />
 
-            <DiscoveryBanner />
+            <DiscoveryBanner :categories="categories" :tags="tags" />
 
             <ShopAll
                 :catalog="catalog"

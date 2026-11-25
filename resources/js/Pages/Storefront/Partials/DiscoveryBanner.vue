@@ -1,16 +1,37 @@
 <script setup>
+import { ref, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import SearchBar from '@/Components/SearchBar.vue';
 
-const suggestions = [
-    { label: 'Heavyweight Tees', query: 'Tee' },
-    { label: 'Essential Runners', query: 'Runner' },
-    { label: 'Minimalist Accessories', query: 'Minimalist' },
-    { label: 'Studio Collection', query: 'Studio' },
-    { label: 'Summer Drops', query: 'Summer' }
+const curatedSuggestions = [
+    { label: 'Fragrance Mists', query: 'Mist' },
+    { label: 'Crossbody Bags', query: 'Crossbody' },
+    { label: 'Wallets & Cardholders', query: 'Wallet' },
+    { label: 'Classic Polos', query: 'Polo' },
+    { label: 'Body Care', query: 'Lotion' },
 ];
 
-const searchCatalog = (query) => {
+const trendingProducts = ref([]);
+
+const fetchTrendingProducts = async () => {
+    try {
+        const response = await fetch(route('storefront.search.suggestions'), {
+            headers: { Accept: 'application/json' },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            trendingProducts.value = (data.trending_products || []).slice(0, 5);
+        }
+    } catch {
+    }
+};
+
+onMounted(() => {
+    fetchTrendingProducts();
+});
+
+const filterCatalog = (query) => {
     router.get(
         route('storefront.index'),
         { search: query },
@@ -22,6 +43,10 @@ const searchCatalog = (query) => {
             },
         }
     );
+};
+
+const goToProduct = (slug) => {
+    router.visit(route('products.show', slug));
 };
 </script>
 
@@ -36,49 +61,52 @@ const searchCatalog = (query) => {
         </div>
 
         <div class="relative z-10 flex flex-col space-y-5 sm:space-y-6 w-full self-start">
-            <div class="flex flex-col space-y-1.5 sm:space-y-2 text-left">
+            <div class="text-left">
                 <h2 class="text-lg sm:text-2xl uppercase tracking-wider text-white font-bold leading-none">
                     SEARCH AND DISCOVER
                 </h2>
-                <p class="text-xs sm:text-sm text-white font-medium leading-relaxed max-w-[280px] sm:max-w-md">
-                    Explore the GreatBuy Originals collection. Find exactly what you need.
-                </p>
             </div>
 
             <div class="flex flex-col space-y-4 w-full md:max-w-[550px]">
-                <SearchBar dark class="!w-full !md:w-full shadow-2xl shadow-black/80"
-                    placeholder="Search for 'Studio Tee' or 'Orbit Sneaker'..." />
+                <SearchBar
+                    dark
+                    :show-recommendations="false"
+                    class="!w-full !md:w-full shadow-2xl shadow-black/80"
+                    placeholder="Search 'BBW Mist', 'Bag', or 'Polo'..."
+                />
 
                 <div class="flex flex-wrap gap-x-3.5 sm:gap-x-5 gap-y-2 items-center">
                     <span
                         class="text-[8px] sm:text-[10px] uppercase tracking-widest text-white/40 font-bold">Suggestions:</span>
                     <button
-                        v-for="item in suggestions"
+                        v-for="item in curatedSuggestions"
                         :key="item.label"
                         type="button"
-                        @click="searchCatalog(item.query)"
-                        class="text-[10px] sm:text-[11px] text-white font-medium hover:text-zinc-400 transition-colors duration-300">
+                        @click="filterCatalog(item.query)"
+                        class="text-[10px] sm:text-[11px] text-white font-medium hover:text-zinc-400 transition-colors duration-300 cursor-pointer">
                         {{ item.label }}
                     </button>
                 </div>
             </div>
         </div>
 
-        <div class="relative z-10 flex flex-col space-y-3 sm:space-y-4 md:w-1/2 self-end text-right mt-10 md:mt-0">
-            <div class="flex flex-col space-y-1.5 sm:space-y-2">
+        <div
+            v-if="trendingProducts.length > 0"
+            class="relative z-10 flex flex-col space-y-3 sm:space-y-4 w-full self-end text-left md:text-right mt-10 md:mt-0">
+            <div>
                 <h2 class="text-lg sm:text-2xl uppercase tracking-wider text-white font-bold leading-none">
                     TRENDING NOW
                 </h2>
             </div>
 
-            <div class="flex flex-wrap gap-x-4 sm:gap-x-8 gap-y-2.5 sm:gap-y-4 justify-end">
+            <div class="flex flex-nowrap overflow-x-auto no-scrollbar gap-x-5 sm:gap-x-8 justify-start md:justify-end whitespace-nowrap">
                 <button
-                    v-for="item in suggestions"
-                    :key="item.label"
+                    v-for="product in trendingProducts"
+                    :key="product.id"
                     type="button"
-                    @click="searchCatalog(item.query)"
-                    class="animated-link text-xs sm:text-sm text-white font-medium relative py-1">
-                    {{ item.label }}
+                    @click="goToProduct(product.slug)"
+                    class="animated-link text-xs sm:text-sm text-white font-medium relative py-1 cursor-pointer shrink-0">
+                    {{ product.name }}
                 </button>
             </div>
         </div>
@@ -103,5 +131,14 @@ const searchCatalog = (query) => {
 .animated-link:hover::after {
     transform: scaleX(1);
     transform-origin: bottom left;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 </style>
