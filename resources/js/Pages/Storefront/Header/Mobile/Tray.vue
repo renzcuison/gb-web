@@ -1,6 +1,8 @@
 <script setup>
 import { computed } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
+import { useStorefrontMenu } from '@/Composables/useStorefrontMenu';
+import { resolveProductImages } from '@/Composables/useProductImage';
 
 const props = defineProps({
     isActive: Boolean,
@@ -9,66 +11,24 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close']);
-const page = usePage();
+const { menuData, buildMenuColumns } = useStorefrontMenu();
 
-const menuData = computed(() => page.props.storefront_menu || { categories: [], tags: [], featured_products: [] });
-
-const arrivalProducts = computed(() => (menuData.value.featured_products || []).slice(0, 4));
-
-const resolveChildHref = (childLabel) => {
-    const normalizedChild = childLabel.toLowerCase();
-    const parentKeywords = props.item.slug === 'kids' ? ['kids', 'kid'] : [props.item.slug];
-
-    const parentCategory = menuData.value.categories?.find((c) =>
-        parentKeywords.includes(c.slug?.toLowerCase()) || parentKeywords.includes(c.name?.toLowerCase())
-    );
-    const parentTag = menuData.value.tags?.find((t) =>
-        parentKeywords.includes(t.slug?.toLowerCase()) || parentKeywords.includes(t.name?.toLowerCase())
-    );
-
-    if (normalizedChild === 'new arrivals' || normalizedChild === 'this week') {
-        return route('storefront.index', {
-            sort: 'latest',
-            category: parentCategory?.slug || undefined,
-            tag: !parentCategory && parentTag ? parentTag.slug : undefined,
-        });
-    }
-
-    const childCategory = menuData.value.categories?.find(
-        (c) => c.slug?.toLowerCase() === normalizedChild || c.name?.toLowerCase() === normalizedChild
-    );
-    const childTag = menuData.value.tags?.find(
-        (t) => t.slug?.toLowerCase() === normalizedChild || t.name?.toLowerCase() === normalizedChild
-    );
-
-    if (childCategory) {
-        return route('storefront.index', {
-            category: childCategory.slug,
-            tag: parentTag?.slug || undefined,
-        });
-    }
-
-    if (childTag) {
-        return route('storefront.index', {
-            tag: childTag.slug,
-            category: parentCategory?.slug || undefined,
-        });
-    }
-
-    return route('storefront.index', {
-        search: childLabel,
-        category: parentCategory?.slug || undefined,
-    });
-};
+const arrivalProducts = computed(() =>
+    (menuData.value.featured_products || []).slice(0, 4).map((product) => ({
+        ...product,
+        _thumb: resolveProductImages(product).primaryImg,
+    }))
+);
+const columns = computed(() => buildMenuColumns(props.item));
 </script>
 
 <template>
     <Transition enter-active-class="transition-all duration-500 ease-out" enter-from-class="opacity-0 max-h-0"
-        enter-to-class="opacity-100 max-h-[1200px]" leave-active-class="transition-all duration-300 ease-in"
-        leave-from-class="opacity-100 max-h-[1200px]" leave-to-class="opacity-0 max-h-0">
+        enter-to-class="opacity-100 max-h-[1400px]" leave-active-class="transition-all duration-300 ease-in"
+        leave-from-class="opacity-100 max-h-[1400px]" leave-to-class="opacity-0 max-h-0">
         <div v-if="isActive" class="mt-6 flex flex-col space-y-6 overflow-hidden">
             <div v-if="item.slug === 'new-arrivals' && arrivalProducts.length > 0" class="relative w-screen -ml-8 pb-2">
-                <div class="flex overflow-x-auto gap-4 px-8 snap-x snap-mandatory scroll-pl-8 no-scrollbar transition-all duration-1000 ease-out"
+                <div class="flex overflow-x-auto gap-x-1 px-8 snap-x snap-mandatory scroll-pl-8 no-scrollbar transition-all duration-1000 ease-out"
                     :style="{
                         transitionDelay: '200ms',
                         transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
@@ -79,18 +39,23 @@ const resolveChildHref = (childLabel) => {
                         :key="product.id"
                         :href="route('products.show', product.slug)"
                         @click="emit('close')"
-                        class="flex-none w-[72vw] snap-start flex flex-col space-y-3">
+                        class="flex-none w-[68vw] snap-start flex flex-col space-y-2.5">
 
-                        <div class="aspect-[16/9] w-full bg-zinc-100 overflow-hidden">
+                        <div class="aspect-[3/4] w-full bg-zinc-100 overflow-hidden flex items-center justify-center">
                             <img
-                                v-if="product.media?.[0]?.url"
-                                :src="product.media[0].url"
+                                v-if="product._thumb"
+                                :src="product._thumb"
                                 :alt="product.name"
                                 class="w-full h-full object-cover transition-all duration-500"
                             />
+                            <span
+                                v-else
+                                class="text-[9px] uppercase tracking-widest text-zinc-400 select-none">
+                                No Image
+                            </span>
                         </div>
 
-                        <div class="flex flex-col space-y-0.5">
+                        <div class="flex flex-col space-y-0.5 pr-2">
                             <span class="text-[14px] font-normal text-zinc-900 tracking-tight leading-snug">
                                 {{ product.name }}
                             </span>
@@ -106,19 +71,31 @@ const resolveChildHref = (childLabel) => {
                 </div>
             </div>
 
-            <Link
-                v-for="(child, index) in item.children"
-                :key="child"
-                :href="resolveChildHref(child)"
-                @click="emit('close')"
-                class="text-sm font-normal text-zinc-400 transition-all duration-1000 ease-out hover:text-black"
-                :style="{
-                    transitionDelay: `${(index * 50) + 300}ms`,
-                    transform: isVisible ? 'translateY(0)' : 'translateY(15px)',
-                    opacity: isVisible ? 1 : 0
-                }">
-                {{ child }}
-            </Link>
+            <div v-for="(col, colIdx) in columns" :key="col.title" class="flex flex-col space-y-3.5">
+                <span
+                    class="block text-[10px] uppercase tracking-[0.3em] text-zinc-400 font-semibold transition-all duration-700 ease-out"
+                    :style="{
+                        transitionDelay: `${(colIdx * 80) + 250}ms`,
+                        transform: isVisible ? 'translateY(0)' : 'translateY(12px)',
+                        opacity: isVisible ? 1 : 0
+                    }">
+                    {{ col.title }}
+                </span>
+
+                <Link
+                    v-for="(link, index) in col.links"
+                    :key="`${col.title}-${link.label}`"
+                    :href="link.href"
+                    @click="emit('close')"
+                    class="text-sm font-normal text-zinc-500 transition-all duration-700 ease-out hover:text-black"
+                    :style="{
+                        transitionDelay: `${((colIdx * 4 + index) * 45) + 300}ms`,
+                        transform: isVisible ? 'translateY(0)' : 'translateY(15px)',
+                        opacity: isVisible ? 1 : 0
+                    }">
+                    {{ link.label }}
+                </Link>
+            </div>
         </div>
     </Transition>
 </template>

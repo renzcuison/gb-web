@@ -8,6 +8,9 @@ use App\Models\Category;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Tag;
+use App\Models\SearchLog;
+use App\Support\SearchQueryExpander;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -41,6 +44,13 @@ public function index(Request $request)
         }
 
         $total = (clone $query)->count();
+
+        $searchTerm = trim((string) $request->input('search', ''));
+        if ($searchTerm !== '' && $total > 0) {
+            SearchLog::record($searchTerm, $total, $request->session()->getId());
+            Cache::forget('storefront:search:recommendations');
+        }
+
         $initialItems = $query
             ->take($perPage)
             ->get(['id', 'category_id', 'brand_id', 'name', 'slug', 'description', 'price']);
@@ -99,13 +109,7 @@ public function index(Request $request)
         ])->where('is_active', true);
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%")
-                    ->orWhereHas('brand', fn ($bq) => $bq->where('name', 'like', "%{$search}%"))
-                    ->orWhereHas('category', fn ($cq) => $cq->where('name', 'like', "%{$search}%"))
-                    ->orWhereHas('variants', fn ($vq) => $vq->where('sku', 'like', "%{$search}%"));
-            });
+            SearchQueryExpander::applyToProductQuery($query, $search);
         }
 
         if ($category) {
@@ -440,19 +444,25 @@ public function index(Request $request)
     public function import(Request $request)
     {
         $request->validate([
-            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+            'file'            => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+            'cad_to_php_rate' => ['nullable', 'numeric', 'min:1', 'max:500'],
         ]);
 
         try {
-            Excel::import(new ProductsImport, $request->file('file'));
+            $uploadedFile = $request->file('file');
+            $rate = (float) ($request->input('cad_to_php_rate') ?: 41.50);
 
-            return back()->with('success', 'Products imported successfully!');
-        } catch (ValidationException $e) {$failures = $e->failures();$errors = [];
+            $importer = (new ProductsImport($rate, auth()->id()))
+                ->registerSheetsFromFile($uploadedFile->getRealPath());
 
-            foreach ($failures as $failure) {$errors[] = "Row {$failure->row()}: " . implode(', ', $failure->errors());
-            }
+            Excel::import($importer, $uploadedFile);
 
-            return back()->withErrors(['file' => $errors]);
+            Cache::forget('storefront:search:recommendations');
+
+            return back()->with(
+                'success',
+                "Imported {$importer->variantsProcessed} SKU variant(s) across {$importer->productsProcessed} product row(s) (CAD rate: ₱" . number_format($rate, 2) . ")."
+            );
         } catch (\Throwable $e) {
             return back()->withErrors(['file' => 'Failed to process import file: ' . $e->getMessage()]);
         }

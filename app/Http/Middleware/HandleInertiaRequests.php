@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Tag;
 use App\Models\Inquiry;
 use App\Models\InventoryAlert;
+use App\Models\Brand;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -60,24 +61,79 @@ class HandleInertiaRequests extends Middleware
                 ->latest()
                 ->get(['id', 'content', 'priority']),
 
-            'storefront_menu' => fn () => [
-                'categories' => Category::whereHas('products', fn ($q) => $q->where('is_active', true))
+            'storefront_menu' => fn () => (function () {
+                $verticalKeywords = [
+                    'apparel-footwear' => ['shoe', 'sneaker', 'footwear', 'sandal', 'boot', 'cap', 'hat', 'headwear', 'cloth', 'apparel', 'shirt', 'hoodie', 'jacket', 'activewear'],
+                    'bags-accessories' => ['bag', 'tote', 'backpack', 'crossbody', 'wallet', 'cardholder', 'watch', 'accessor', 'belt', 'eyewear', 'sunglass'],
+                    'beauty-fragrance' => ['perfume', 'fragrance', 'mist', 'decant', 'cologne', 'lotion', 'cream', 'beauty', 'skincare', 'body', 'bath', 'cosmetic', 'grooming'],
+                    'home-kitchen'     => ['kitchen', 'frying', 'pan', 'cookware', 'pot', 'plate', 'dinnerware', 'bowl', 'mug', 'drinkware', 'pantry', 'wellness', 'home', 'furniture', 'electronic', 'appliance', 'living'],
+                ];
+
+                $activeCategories = Category::whereHas('products', fn ($q) => $q->where('is_active', true))
+                    ->withCount(['products' => fn ($q) => $q->where('is_active', true)])
+                    ->orderByDesc('products_count')
                     ->orderBy('name')
-                    ->get(['id', 'name', 'slug']),
-                'tags' => Tag::whereHas('products', fn ($q) => $q->where('is_active', true))
+                    ->get(['id', 'name', 'slug']);
+
+                $activeBrands = Brand::whereHas('products', fn ($q) => $q->where('is_active', true))
+                    ->withCount(['products' => fn ($q) => $q->where('is_active', true)])
+                    ->orderByDesc('products_count')
                     ->orderBy('name')
-                    ->get(['id', 'name', 'slug']),
-                'featured_products' => Product::with([
-                    'category:id,name,slug',
-                    'brand:id,name,slug',
-                    'tags:id,name,slug',
-                    'media' => fn ($q) => $q->orderByDesc('is_primary')->orderBy('order'),
-                ])
-                    ->where('is_active', true)
-                    ->latest()
-                    ->take(12)
-                    ->get(['id', 'category_id', 'brand_id', 'name', 'slug', 'description', 'price']),
-            ],
+                    ->get(['id', 'name', 'slug']);
+
+                $activeTags = Tag::whereHas('products', fn ($q) => $q->where('is_active', true))
+                    ->withCount(['products' => fn ($q) => $q->where('is_active', true)])
+                    ->orderByDesc('products_count')
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'slug']);
+
+                $verticals = collect($verticalKeywords)->mapWithKeys(function (array $keywords, string $verticalSlug) use ($activeCategories) {
+                    $matchedCategories = $activeCategories->filter(function ($cat) use ($keywords) {
+                        $haystack = strtolower($cat->name . ' ' . $cat->slug);
+                        foreach ($keywords as $kw) {
+                            if (str_contains($haystack, $kw)) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    })->values();
+
+                    $categoryIds = $matchedCategories->pluck('id');
+
+                    $matchedBrands = $categoryIds->isNotEmpty()
+                        ? Brand::whereHas('products', fn ($q) => $q->where('is_active', true)->whereIn('category_id', $categoryIds))
+                            ->withCount(['products' => fn ($q) => $q->where('is_active', true)->whereIn('category_id', $categoryIds)])
+                            ->orderByDesc('products_count')
+                            ->orderBy('name')
+                            ->take(5)
+                            ->get(['id', 'name', 'slug'])
+                        : collect();
+
+                    return [
+                        $verticalSlug => [
+                            'categories' => $matchedCategories,
+                            'brands'     => $matchedBrands,
+                        ],
+                    ];
+                })->all();
+
+                return [
+                    'categories'        => $activeCategories,
+                    'brands'            => $activeBrands,
+                    'tags'              => $activeTags,
+                    'verticals'         => $verticals,
+                    'featured_products' => Product::with([
+                        'category:id,name,slug',
+                        'brand:id,name,slug',
+                        'tags:id,name,slug',
+                        'media' => fn ($q) => $q->orderByDesc('is_primary')->orderBy('order'),
+                    ])
+                        ->where('is_active', true)
+                        ->latest()
+                        ->take(24)
+                        ->get(['id', 'category_id', 'brand_id', 'name', 'slug', 'description', 'price']),
+                ];
+            })(),
 
             'admin_badges' => fn () => $request->user()?->isAdmin()
                 ? [

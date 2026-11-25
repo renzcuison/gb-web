@@ -14,6 +14,7 @@ use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\InventoryAlertController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\InquiryController;
+use App\Http\Controllers\StorefrontSearchController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,12 @@ use App\Models\Inquiry;
 use Inertia\Inertia;
 
 Route::get('/', [ProductController::class, 'index'])->name('storefront.index');
-Route::get('/', [ProductController::class, 'index'])->name('storefront.index');
+Route::get('/storefront/search/suggestions', [StorefrontSearchController::class, 'suggestions'])
+    ->middleware('throttle:60,1')
+    ->name('storefront.search.suggestions');
+Route::post('/storefront/search/log', [StorefrontSearchController::class, 'log'])
+    ->middleware('throttle:30,1')
+    ->name('storefront.search.log');
 Route::post('/inquiries', [InquiryController::class, 'store'])
     ->middleware('throttle:10,1')
     ->name('inquiries.store');

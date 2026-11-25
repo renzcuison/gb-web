@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import { useProductImage } from '@/Composables/useProductImage';
 
 const props = defineProps({
     product: {
@@ -9,8 +10,7 @@ const props = defineProps({
     }
 });
 
-const primaryImg = computed(() => props.product.img || props.product.media?.[0]?.url || null);
-const hoverImg = computed(() => props.product.imgHover || props.product.media?.[1]?.url || null);
+const { primaryImg, hoverImg, onPrimaryError, onHoverError } = useProductImage(() => props.product);
 
 const formattedPrice = computed(() => {
     const raw = props.product.price;
@@ -32,6 +32,8 @@ const formattedPrice = computed(() => {
                 v-if="primaryImg"
                 :src="primaryImg"
                 :alt="product.name"
+                loading="lazy"
+                @error="onPrimaryError"
                 class="w-full h-full object-cover"
             />
             <div
@@ -44,6 +46,8 @@ const formattedPrice = computed(() => {
                 v-if="hoverImg"
                 :src="hoverImg"
                 :alt="product.name"
+                loading="lazy"
+                @error="onHoverError"
                 class="absolute inset-0 w-full h-full object-cover opacity-0 group-hover/item:opacity-100"
             />
         </div>

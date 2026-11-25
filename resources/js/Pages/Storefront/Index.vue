@@ -21,11 +21,12 @@ const props = defineProps({
     filters: { type: Object, default: () => ({}) },
 });
 
-const hasActiveFilterQuery = (f) =>
-    Boolean(f?.search || f?.category || f?.brand || f?.tag || f?.in_stock);
+const shouldScrollToCatalog = (f) =>
+    window.location.hash === '#catalog' ||
+    Boolean(f?.search || f?.category || f?.brand || f?.tag || f?.in_stock || (f?.sort && f.sort !== 'latest'));
 
 onMounted(() => {
-    if (hasActiveFilterQuery(props.filters)) {
+    if (shouldScrollToCatalog(props.filters)) {
         requestAnimationFrame(() => {
             document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
         });
@@ -35,7 +36,7 @@ onMounted(() => {
 watch(
     () => props.filters,
     (next) => {
-        if (hasActiveFilterQuery(next)) {
+        if (shouldScrollToCatalog(next)) {
             document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
         }
     },

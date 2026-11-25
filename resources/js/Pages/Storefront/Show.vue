@@ -5,13 +5,22 @@ import AnnouncementBar from '@/Pages/Storefront/AnnouncementBar.vue';
 import Header from '@/Pages/Storefront/Header/Index.vue';
 import Footer from '@/Pages/Storefront/Footer.vue';
 import ProductCard from '@/Components/ProductCard.vue';
+import { resolveProductImages } from '@/Composables/useProductImage';
 
 const props = defineProps({
     product: { type: Object, required: true },
     relatedProducts: { type: Array, default: () => [] },
 });
 
-const mediaList = computed(() => props.product.media || []);
+const mediaList = computed(() => {
+    if (props.product.media && props.product.media.length > 0) {
+        return props.product.media;
+    }
+    const { primaryImg, hoverImg } = resolveProductImages(props.product);
+    return [primaryImg, hoverImg]
+        .filter(Boolean)
+        .map((url, idx) => ({ id: `placeholder-${idx}`, url }));
+});
 const activeImageIndex = ref(0);
 
 const variants = computed(() => props.product.variants || []);
@@ -119,7 +128,21 @@ const resetInquiryState = () => {
             </nav>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
-                <div class="lg:col-span-7 flex flex-col-reverse sm:flex-row gap-3">
+                <div class="lg:col-span-7 flex flex-col sm:flex-row gap-3">
+                    <div class="flex-1 aspect-[4/5] bg-zinc-100 rounded-[1px] overflow-hidden">
+                        <img
+                            v-if="activeImage"
+                            :src="activeImage"
+                            :alt="product.name"
+                            class="w-full h-full object-cover"
+                        />
+                        <div
+                            v-else
+                            class="w-full h-full flex items-center justify-center text-xs uppercase tracking-[0.3em] text-zinc-400">
+                            No Image
+                        </div>
+                    </div>
+
                     <div
                         v-if="mediaList.length > 1"
                         class="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-[640px] shrink-0">
@@ -136,20 +159,6 @@ const resetInquiryState = () => {
                             ]">
                             <img :src="item.url" :alt="product.name" class="w-full h-full object-cover" />
                         </button>
-                    </div>
-
-                    <div class="flex-1 aspect-[4/5] bg-zinc-100 rounded-[1px] overflow-hidden">
-                        <img
-                            v-if="activeImage"
-                            :src="activeImage"
-                            :alt="product.name"
-                            class="w-full h-full object-cover"
-                        />
-                        <div
-                            v-else
-                            class="w-full h-full flex items-center justify-center text-xs uppercase tracking-[0.3em] text-zinc-400">
-                            No Image
-                        </div>
                     </div>
                 </div>
 
@@ -198,7 +207,6 @@ const resetInquiryState = () => {
                         </div>
                     </div>
 
-                    <!-- Stock Status Line -->
                     <p class="text-xs text-zinc-500">
                         {{ availabilityText }}
                     </p>

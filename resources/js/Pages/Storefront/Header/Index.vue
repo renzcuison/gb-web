@@ -1,74 +1,70 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { Link } from '@inertiajs/vue3';
 import SearchBar from '@/Components/SearchBar.vue';
 import Logo from '@/Components/Logo.vue';
 import Hamburger from '@/Pages/Storefront/Header/Mobile/Hamburger.vue';
 import MobileMenu from './Mobile/Index.vue';
 import MegaMenu from './MegaMenu.vue';
 
-const page = usePage();
+const headerRef = ref(null);
 const isMobileMenuOpen = ref(false);
 const activeMenuSlug = ref(null);
 
-const menuData = computed(() => page.props.storefront_menu || { categories: [], tags: [], featured_products: [] });
-
 const navItems = [
-    { name: 'Women', slug: 'women', children: ['New Arrivals', 'Shoes', 'Clothing'] },
-    { name: 'Men', slug: 'men', children: ['New Arrivals', 'Shoes', 'Clothing'] },
-    { name: 'Kids', slug: 'kids', children: ['New Arrivals', 'Shoes', 'Clothing'] },
-    { name: 'New Arrivals', slug: 'new-arrivals', children: ['This Week', 'Sustainability', 'Collaborations'] }
+    { name: 'New Arrivals', slug: 'new-arrivals' },
+    { name: 'Apparel', slug: 'apparel-footwear' },
+    { name: 'Accessories', slug: 'bags-accessories' },
+    { name: 'Beauty', slug: 'beauty-fragrance' },
+    { name: 'Home', slug: 'home-kitchen' },
 ];
-
-const resolveTopLevelHref = (item) => {
-    if (item.slug === 'new-arrivals') {
-        return route('storefront.index', { sort: 'latest' });
-    }
-
-    const keywords = item.slug === 'kids' ? ['kids', 'kid'] : [item.slug];
-    const matchedCat = menuData.value.categories?.find((c) =>
-        keywords.includes(c.slug?.toLowerCase()) || keywords.includes(c.name?.toLowerCase())
-    );
-    if (matchedCat) {
-        return route('storefront.index', { category: matchedCat.slug });
-    }
-
-    const matchedTag = menuData.value.tags?.find((t) =>
-        keywords.includes(t.slug?.toLowerCase()) || keywords.includes(t.name?.toLowerCase())
-    );
-    if (matchedTag) {
-        return route('storefront.index', { tag: matchedTag.slug });
-    }
-
-    return route('storefront.index', { search: item.name });
-};
 
 const closeMegaMenu = () => {
     activeMenuSlug.value = null;
 };
+
+const handleClickOutside = (event) => {
+    if (headerRef.value && !headerRef.value.contains(event.target)) {
+        closeMegaMenu();
+    }
+};
+
+onMounted(() => {
+    document.addEventListener('click', handleClickOutside);
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <template>
-    <header class="sticky top-0 bg-white text-zinc-900 z-50 transition-all duration-300">
+    <header ref="headerRef" class="sticky top-0 bg-white text-zinc-900 z-50 transition-all duration-300">
         <div class="max-w-full mx-auto px-6 lg:px-10">
             <div class="grid grid-cols-2 md:grid-cols-3 items-center h-16">
                 <div class="flex justify-start items-center">
                     <Logo />
                 </div>
 
-                <nav class="hidden md:flex justify-center items-center space-x-4 h-full">
+                <nav class="hidden md:flex justify-center items-center space-x-1 lg:space-x-3 h-full">
                     <div
                         v-for="item in navItems"
                         :key="item.slug"
                         @mouseenter="activeMenuSlug = item.slug"
                         @mouseleave="activeMenuSlug = null"
                         class="h-full flex items-center">
-                        <Link
-                            :href="resolveTopLevelHref(item)"
-                            @click="closeMegaMenu"
-                            class="text-xs font-normal tracking-normal text-zinc-700 hover:text-black transition-colors duration-300 h-full px-3 flex items-center">
+                        <button
+                            type="button"
+                            @click="activeMenuSlug = item.slug"
+                            :aria-expanded="activeMenuSlug === item.slug"
+                            :class="[
+                                'text-xs font-normal tracking-normal whitespace-nowrap transition-colors duration-300 h-full px-2.5 lg:px-3.5 flex items-center focus:outline-none',
+                                activeMenuSlug === item.slug
+                                    ? 'text-black'
+                                    : 'text-zinc-700 hover:text-black',
+                            ]">
                             {{ item.name }}
-                        </Link>
+                        </button>
                         <MegaMenu
                             v-show="activeMenuSlug === item.slug"
                             :item="item"
