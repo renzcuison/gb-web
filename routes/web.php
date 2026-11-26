@@ -45,6 +45,7 @@ Route::get('/dashboard', function (Request $request) {
     if ($request->user()->role === 'admin') {
         $stats = [
             'totalItems' => ProductVariant::count(),
+            'archivedItems' => ProductVariant::onlyTrashed()->count(),
             'outOfStockCount' => ProductVariant::where('stock_qty', '<=', 0)->count(),
             'lowStockCount' => ProductVariant::where('stock_qty', '>', 0)
                 ->whereColumn('stock_qty', '<=', 'low_stock_threshold')
@@ -54,6 +55,19 @@ Route::get('/dashboard', function (Request $request) {
             'totalValue' => ProductVariant::join('products', 'product_variants.product_id', '=', 'products.id')
                 ->sum(DB::raw('stock_qty * COALESCE(product_variants.price_override, products.price, 0)')),
         ];
+
+        $outOfStockItems = ProductVariant::with('product:id,name')
+            ->where('stock_qty', '<=', 0)
+            ->latest('updated_at')
+            ->take(3)
+            ->get(['id', 'product_id', 'sku', 'variant_label', 'stock_qty', 'updated_at']);
+
+        $lowStockItems = ProductVariant::with('product:id,name')
+            ->where('stock_qty', '>', 0)
+            ->whereColumn('stock_qty', '<=', 'low_stock_threshold')
+            ->orderBy('stock_qty')
+            ->take(3)
+            ->get(['id', 'product_id', 'sku', 'variant_label', 'stock_qty', 'low_stock_threshold']);
 
         $recentAlerts = InventoryAlert::with('productVariant.product')
             ->where('is_resolved', false)
@@ -88,6 +102,8 @@ Route::get('/dashboard', function (Request $request) {
 
         return Inertia::render('Admin/Dashboard', [
             'stats' => $stats,
+            'outOfStockItems' => $outOfStockItems,
+            'lowStockItems' => $lowStockItems,
             'recentAlerts' => $recentAlerts,
             'recentMovements' => $recentMovements,
             'topStockedItems' => $topStockedItems,

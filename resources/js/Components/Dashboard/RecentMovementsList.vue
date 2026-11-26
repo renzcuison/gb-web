@@ -21,10 +21,9 @@ const formatTime = (dateStr) => {
   <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden">
     <div class="px-4 py-3 border-b border-slate-200/80 dark:border-zinc-800 flex items-center justify-between">
       <h2 class="text-xs font-medium text-slate-700 dark:text-zinc-300">Recent Stock Activity</h2>
-      <Link
-        :href="route('inventory.movements.index')"
+      <Link :href="route('inventory.movements.index')"
         class="text-[11px] font-medium text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
-        View all →
+        View all
       </Link>
     </div>
 
@@ -35,13 +34,12 @@ const formatTime = (dateStr) => {
             <TableHead class="px-4 h-9 text-xs font-medium text-slate-500 dark:text-zinc-400">Item</TableHead>
             <TableHead class="px-4 h-9 text-xs font-medium text-slate-500 dark:text-zinc-400">Reason / By</TableHead>
             <TableHead class="px-4 h-9 text-xs font-medium text-slate-500 dark:text-zinc-400">Time</TableHead>
-            <TableHead class="px-4 h-9 text-right text-xs font-medium text-slate-500 dark:text-zinc-400">Change</TableHead>
+            <TableHead class="px-4 h-9 text-right text-xs font-medium text-slate-500 dark:text-zinc-400">Change
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow
-            v-for="move in movements"
-            :key="move.id"
+          <TableRow v-for="move in movements" :key="move.id"
             class="border-b border-slate-100 dark:border-zinc-800/60 hover:bg-slate-50/60 dark:hover:bg-zinc-800/40 transition-colors">
             <TableCell class="px-4 py-2.5">
               <div class="text-xs font-medium text-slate-900 dark:text-zinc-100">
@@ -63,12 +61,9 @@ const formatTime = (dateStr) => {
               {{ formatTime(move.created_at) }}
             </TableCell>
 
-            <TableCell
-              class="px-4 py-2.5 text-right font-mono text-xs font-medium"
-              :class="
-                move.type === 'in'
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-rose-600 dark:text-rose-400'
+            <TableCell class="px-4 py-2.5 text-right font-mono text-xs font-medium" :class="move.type === 'in'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-rose-600 dark:text-rose-400'
               ">
               {{ move.type === 'in' ? '+' : '-' }}{{ move.quantity }}
             </TableCell>
