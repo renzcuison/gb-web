@@ -25,6 +25,7 @@ import {
   Bell,
   MessageSquare,
   Megaphone,
+  Users,
   ChevronDown
 } from 'lucide-vue-next'
 
@@ -59,6 +60,7 @@ const navGroups = [
       { name: 'Alerts', href: '/inventory/alerts', icon: Bell, badgeKey: 'unresolved_alerts' },
       { name: 'Inquiries', href: '/inquiries', icon: MessageSquare, badgeKey: 'new_inquiries' },
       { name: 'Announcements', href: '/announcements', icon: Megaphone },
+      { name: 'Users', href: '/users', icon: Users },
     ]
   }
 ]

@@ -15,6 +15,7 @@ use App\Http\Controllers\InventoryAlertController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\StorefrontSearchController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -163,6 +164,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::patch('/inquiries/{inquiry}', [InquiryController::class, 'update'])->name('inquiries.update');
     Route::post('/inquiries/{inquiry}/fulfill', [InquiryController::class, 'fulfill'])->name('inquiries.fulfill');
     Route::delete('/inquiries/{inquiry}', [InquiryController::class, 'destroy'])->name('inquiries.destroy');
+
+    // User Management
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.update-role');
 });
 
 Route::get('/products/{slug}', [ProductController::class, 'show'])->name('products.show');
