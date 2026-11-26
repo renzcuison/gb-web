@@ -21,6 +21,14 @@ class InquiryController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
+        $settings = SettingsController::all();
+
+        if (! $settings['storefront_inquiries_enabled']) {
+            return back()->withErrors([
+                'inquiry' => 'Product inquiries are currently disabled.',
+            ]);
+        }
+
         $validated = $request->validate([
             'product_id' => ['required', 'integer', Rule::exists('products', 'id')->where('is_active', true)],
             'product_variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
@@ -54,7 +62,13 @@ class InquiryController extends Controller
         }
 
         try {
-            Mail::to($inquiry->customer_email)->send(new InquiryReceivedMail($inquiry));
+            $mail = Mail::to($inquiry->customer_email);
+
+            if (! empty($settings['inquiry_recipient_email'])) {
+                $mail->bcc($settings['inquiry_recipient_email']);
+            }
+
+            $mail->send(new InquiryReceivedMail($inquiry));
         } catch (\Throwable $e) {
             report($e);
         }
@@ -69,7 +83,7 @@ class InquiryController extends Controller
 
         $query = Inquiry::with([
             'product:id,name,slug,price',
-            'product.media' => fn ($q) => $q->orderByDesc('is_primary')->orderBy('order'),
+            'product.media' => fn($q) => $q->orderByDesc('is_primary')->orderBy('order'),
             'variant:id,product_id,sku,variant_label,price_override,stock_qty',
             'resolvedBy:id,name',
         ])->latest();
@@ -89,8 +103,8 @@ class InquiryController extends Controller
                     ->orWhere('customer_email', 'like', "%{$search}%")
                     ->orWhere('customer_phone', 'like', "%{$search}%")
                     ->orWhere('message', 'like', "%{$search}%")
-                    ->orWhereHas('product', fn ($pq) => $pq->where('name', 'like', "%{$search}%"))
-                    ->orWhereHas('variant', fn ($vq) => $vq->where('sku', 'like', "%{$search}%"));
+                    ->orWhereHas('product', fn($pq) => $pq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('variant', fn($vq) => $vq->where('sku', 'like', "%{$search}%"));
             });
         }
 
@@ -159,28 +173,39 @@ class InquiryController extends Controller
             'admin_notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
+        $settings = SettingsController::all();
+
         try {
-            DB::transaction(function () use ($request, $inquiry, $validated) {
+            DB::transaction(function () use ($request, $inquiry, $validated, $settings) {
                 $variant = ProductVariant::lockForUpdate()->findOrFail($inquiry->product_variant_id);
 
-                if ($variant->stock_qty < $inquiry->quantity) {
-                    throw new \RuntimeException(
-                        "Insufficient stock for {$variant->sku} ({$variant->stock_qty} available, {$inquiry->quantity} requested)."
-                    );
+                if ($settings['auto_deduct_stock_on_fulfill']) {
+                    if (! $settings['allow_negative_stock'] && $variant->stock_qty < $inquiry->quantity) {
+                        throw new \RuntimeException(
+                            "Insufficient stock for {$variant->sku} ({$variant->stock_qty} available, {$inquiry->quantity} requested)."
+                        );
+                    }
+
+                    $variant->stock_qty -= $inquiry->quantity;
+                    $variant->save();
+
+                    InventoryMovement::create([
+                        'variant_id' => $variant->id,
+                        'user_id' => $request->user()->id,
+                        'quantity' => $inquiry->quantity,
+                        'type' => 'out',
+                        'reason' => "Inquiry #{$inquiry->id} fulfilled ({$inquiry->customer_name})",
+                    ]);
+
+                    if (method_exists($variant, 'syncStockAlert')) {
+                        $variant->syncStockAlert();
+                    }
+
+                    $fulfillmentNote = "Fulfilled and deducted {$inquiry->quantity} unit(s) from SKU {$variant->sku} on " . now()->format('M d, Y H:i') . '.';
+                } else {
+                    $fulfillmentNote = "Fulfilled {$inquiry->quantity} unit(s) for SKU {$variant->sku} without automatic stock deduction on " . now()->format('M d, Y H:i') . '.';
                 }
 
-                $variant->stock_qty -= $inquiry->quantity;
-                $variant->save();
-
-                InventoryMovement::create([
-                    'variant_id' => $variant->id,
-                    'user_id' => $request->user()->id,
-                    'quantity' => $inquiry->quantity,
-                    'type' => 'out',
-                    'reason' => "Inquiry #{$inquiry->id} fulfilled ({$inquiry->customer_name})",
-                ]);
-
-                $fulfillmentNote = "Fulfilled {$inquiry->quantity} unit(s) from SKU {$variant->sku} on " . now()->format('M d, Y H:i') . '.';
                 $existingNotes = trim((string) ($validated['admin_notes'] ?? $inquiry->admin_notes ?? ''));
                 $combinedNotes = $existingNotes !== '' ? "{$existingNotes}\n{$fulfillmentNote}" : $fulfillmentNote;
 
@@ -197,7 +222,11 @@ class InquiryController extends Controller
             ]);
         }
 
-        return back()->with('success', "Deducted {$inquiry->quantity} unit(s) and marked inquiry #{$inquiry->id} resolved.");
+        $msg = $settings['auto_deduct_stock_on_fulfill']
+            ? "Deducted {$inquiry->quantity} unit(s) and marked inquiry #{$inquiry->id} resolved."
+            : "Marked inquiry #{$inquiry->id} resolved (auto-deduction disabled).";
+
+        return back()->with('success', $msg);
     }
 
     public function destroy(Inquiry $inquiry): RedirectResponse

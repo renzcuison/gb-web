@@ -68,20 +68,26 @@ const userInitials = computed(() => {
         .toUpperCase()
         .slice(0, 2)
 })
+
+const avatarBgColor = computed(() => user.value?.resolved_avatar_color || '#4f46e5')
 </script>
 
 <template>
     <div ref="containerRef" class="relative">
         <button @click="isOpen = !isOpen"
             class="flex items-center gap-2.5 p-1.5 pl-2 rounded-xl text-slate-700 dark:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800/80 transition focus:outline-none">
-            <div
-                class="h-8 w-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
+            <img v-if="user.avatar_url" :src="user.avatar_url" :alt="user.name"
+                class="h-8 w-8 rounded-lg object-cover shrink-0 shadow-sm" />
+            <div v-else :style="{ backgroundColor: avatarBgColor }"
+                class="h-8 w-8 rounded-lg text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
                 {{ userInitials }}
             </div>
 
             <div class="hidden md:block text-left">
                 <p class="text-xs font-semibold leading-tight text-slate-800 dark:text-zinc-100">{{ user.name }}</p>
-                <p class="text-[10px] text-slate-400 dark:text-zinc-500 leading-tight">Administrator</p>
+                <p class="text-[10px] text-slate-400 dark:text-zinc-500 leading-tight capitalize">
+                    {{ user.role === 'admin' ? 'Administrator' : (user.role || 'Member') }}
+                </p>
             </div>
 
             <ChevronDown class="h-3.5 w-3.5 text-slate-400 dark:text-zinc-500 transition-transform duration-200"
@@ -89,12 +95,14 @@ const userInitials = computed(() => {
         </button>
 
         <div v-if="isOpen"
-            class="absolute right-0 mt-2 w-72 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl z-50 overflow-hidden divide-y divide-slate-100 dark:divide-zinc-800/70">
+            class="absolute right-0 mt-2 w-72 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl z-50 overflow-hidden">
 
             <div class="p-4 bg-slate-50/50 dark:bg-zinc-800/30">
                 <div class="flex items-center gap-3">
-                    <div
-                        class="h-10 w-10 rounded-xl bg-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0">
+                    <img v-if="user.avatar_url" :src="user.avatar_url" :alt="user.name"
+                        class="h-10 w-10 rounded-xl object-cover shrink-0" />
+                    <div v-else :style="{ backgroundColor: avatarBgColor }"
+                        class="h-10 w-10 rounded-xl text-white font-bold text-sm flex items-center justify-center shrink-0">
                         {{ userInitials }}
                     </div>
                     <div class="overflow-hidden">

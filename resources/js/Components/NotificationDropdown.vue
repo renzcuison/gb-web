@@ -178,7 +178,6 @@ const getTypeStyle = (type) => {
 
 <template>
   <div ref="containerRef" class="relative">
-    <!-- Bell Trigger Button -->
     <button @click="togglePopover" title="Notifications" aria-label="Notifications"
       class="relative flex items-center justify-center h-9 w-9 rounded-lg text-slate-600 dark:text-zinc-300 bg-slate-100 hover:bg-slate-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 transition-colors border border-slate-200/80 dark:border-zinc-700/60">
       <Bell class="h-4 w-4 text-slate-500 dark:text-zinc-400" />
@@ -189,10 +188,8 @@ const getTypeStyle = (type) => {
       </span>
     </button>
 
-    <!-- Floating Popover Bubble -->
     <div v-if="isOpen"
       class="fixed right-4 top-14 w-96 max-w-[calc(100vw-2rem)] rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl z-50 overflow-hidden text-zinc-800 dark:text-zinc-200">
-      <!-- Header -->
       <div class="px-4 pt-3.5 pb-2 flex items-center justify-between">
         <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
           Notifications
@@ -217,7 +214,6 @@ const getTypeStyle = (type) => {
         </div>
       </div>
 
-      <!-- Filter Tabs -->
       <div class="flex items-center gap-1 px-4 pb-2">
         <button @click="filterTab = 'all'" class="px-2.5 py-1 rounded-md text-[11px] font-medium transition" :class="filterTab === 'all'
           ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
@@ -237,7 +233,6 @@ const getTypeStyle = (type) => {
         </button>
       </div>
 
-      <!-- Grouped Notification List -->
       <div class="max-h-[480px] overflow-y-auto px-1.5 pb-2 space-y-3">
         <div v-for="group in groupedNotifications" :key="group.label" class="space-y-0.5">
           <div class="px-3 pt-1 pb-0.5 flex items-center justify-between">
@@ -278,7 +273,6 @@ const getTypeStyle = (type) => {
           </div>
         </div>
 
-        <!-- Empty State -->
         <div v-if="groupedNotifications.length === 0"
           class="px-4 py-12 text-center text-xs text-zinc-400 dark:text-zinc-500">
           No {{ filterTab === 'unread' ? 'unread' : '' }} notifications.

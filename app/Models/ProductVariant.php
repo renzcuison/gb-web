@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Controllers\SettingsController;
 use App\Notifications\StockAlertNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -43,7 +44,15 @@ class ProductVariant extends Model
 
     public function syncStockAlert(): void
     {
-        if ($this->stock_qty <= $this->low_stock_threshold) {
+        $settings = SettingsController::all();
+
+        $isOutOfStock = $this->stock_qty <= 0;
+        $isLowStock = ! $isOutOfStock && $this->stock_qty <= $this->low_stock_threshold;
+
+        $shouldTrackAlert = ($isOutOfStock && $settings['alert_on_zero_stock'])
+            || ($isLowStock && $settings['alert_on_low_stock']);
+
+        if ($shouldTrackAlert) {
             $openAlert = $this->alerts()
                 ->where('is_resolved', false)
                 ->latest()
@@ -52,7 +61,9 @@ class ProductVariant extends Model
             $shouldNotify = false;
 
             if ($openAlert) {
-                $escalatedToOutOfStock = $openAlert->threshold_reached > 0 && $this->stock_qty <= 0;
+                $escalatedToOutOfStock = $openAlert->threshold_reached > 0
+                    && $this->stock_qty <= 0
+                    && $settings['alert_on_zero_stock'];
 
                 if ($openAlert->threshold_reached !== $this->stock_qty) {
                     $openAlert->update(['threshold_reached' => $this->stock_qty]);
@@ -78,9 +89,11 @@ class ProductVariant extends Model
             return;
         }
 
-        $this->alerts()
-            ->where('is_resolved', false)
-            ->update(['is_resolved' => true]);
+        if ($this->stock_qty > $this->low_stock_threshold && $settings['auto_resolve_alerts_on_restock']) {
+            $this->alerts()
+                ->where('is_resolved', false)
+                ->update(['is_resolved' => true]);
+        }
     }
 
     public function product(): BelongsTo

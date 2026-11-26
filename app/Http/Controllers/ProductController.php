@@ -18,14 +18,14 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
-use Maatwebsite\Excel\Validators\ValidationException;
 
 class ProductController extends Controller
 {
-public function index(Request $request)
+    public function index(Request $request)
     {
         $perPage = 12;
         $query = $this->buildCatalogQuery($request);
+        $settings = SettingsController::all();
 
         if ($request->wantsJson()) {
             $offset = max(0, (int) $request->input('offset', 0));
@@ -58,10 +58,14 @@ public function index(Request $request)
         $newArrivals = Product::with([
             'category:id,name,slug',
             'brand:id,name,slug',
-            'media' => fn ($q) => $q->orderByDesc('is_primary')->orderBy('order'),
+            'media' => fn($q) => $q->orderByDesc('is_primary')->orderBy('order'),
             'variants:id,product_id,sku,variant_label,price_override,stock_qty,low_stock_threshold',
         ])
             ->where('is_active', true)
+            ->when(
+                $settings['hide_out_of_stock_storefront'],
+                fn($q) => $q->whereHas('variants', fn($vq) => $vq->where('stock_qty', '>', 0))
+            )
             ->latest()
             ->take(8)
             ->get();
@@ -73,13 +77,13 @@ public function index(Request $request)
                 'has_more' => $total > $initialItems->count(),
             ],
             'newArrivals' => $newArrivals,
-            'categories' => Category::whereHas('products', fn ($q) => $q->where('is_active', true))
+            'categories' => Category::whereHas('products', fn($q) => $q->where('is_active', true))
                 ->orderBy('name')
                 ->get(['id', 'name', 'slug']),
-            'brands' => Brand::whereHas('products', fn ($q) => $q->where('is_active', true))
+            'brands' => Brand::whereHas('products', fn($q) => $q->where('is_active', true))
                 ->orderBy('name')
                 ->get(['id', 'name', 'slug']),
-            'tags' => Tag::whereHas('products', fn ($q) => $q->where('is_active', true))
+            'tags' => Tag::whereHas('products', fn($q) => $q->where('is_active', true))
                 ->orderBy('name')
                 ->get(['id', 'name', 'slug', 'color_code']),
             'filters' => [
@@ -101,11 +105,12 @@ public function index(Request $request)
         $tag = $request->input('tag');
         $inStock = $request->boolean('in_stock');
         $sort = $request->input('sort', 'latest');
+        $settings = SettingsController::all();
 
         $query = Product::with([
             'category:id,name,slug',
             'brand:id,name,slug',
-            'media' => fn ($q) => $q->orderByDesc('is_primary')->orderBy('order'),
+            'media' => fn($q) => $q->orderByDesc('is_primary')->orderBy('order'),
         ])->where('is_active', true);
 
         if ($search !== '') {
@@ -136,8 +141,8 @@ public function index(Request $request)
             });
         }
 
-        if ($inStock) {
-            $query->whereHas('variants', fn ($q) => $q->where('stock_qty', '>', 0));
+        if ($inStock || $settings['hide_out_of_stock_storefront']) {
+            $query->whereHas('variants', fn($q) => $q->where('stock_qty', '>', 0));
         }
 
         match ($sort) {
@@ -152,11 +157,13 @@ public function index(Request $request)
 
     public function show($slug)
     {
+        $settings = SettingsController::all();
+
         $product = Product::with([
             'category:id,name,slug',
             'brand:id,name,slug',
-            'variants' => fn ($q) =>$q->orderBy('id'),
-            'media' => fn ($q) =>$q->orderByDesc('is_primary')->orderBy('order'),
+            'variants' => fn($q) => $q->orderBy('id'),
+            'media' => fn($q) => $q->orderByDesc('is_primary')->orderBy('order'),
             'tags:id,name,slug,color_code',
             'attributes:id,product_id,name,value',
         ])
@@ -167,13 +174,17 @@ public function index(Request $request)
         $relatedProducts = Product::with([
             'category:id,name,slug',
             'brand:id,name,slug',
-            'media' => fn ($q) =>$q->orderByDesc('is_primary')->orderBy('order'),
+            'media' => fn($q) => $q->orderByDesc('is_primary')->orderBy('order'),
             'variants:id,product_id,price_override,stock_qty',
         ])
             ->where('is_active', true)
+            ->when(
+                $settings['hide_out_of_stock_storefront'],
+                fn($q) => $q->whereHas('variants', fn($vq) => $vq->where('stock_qty', '>', 0))
+            )
             ->where('id', '!=', $product->id)
             ->where(function ($q) use ($product) {
-                $q->where('category_id',$product->category_id)
+                $q->where('category_id', $product->category_id)
                     ->orWhere('brand_id', $product->brand_id);
             })
             ->latest()
@@ -188,16 +199,20 @@ public function index(Request $request)
 
     public function create()
     {
+        $settings = SettingsController::all();
+
         return Inertia::render('Products/Create', [
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'brands' => Brand::orderBy('name')->get(['id', 'name']),
             'tags' => Tag::orderBy('name')->get(['id', 'name', 'color_code']),
+            'defaultLowStockThreshold' => $settings['default_low_stock_threshold'],
+            'skuPrefix' => $settings['sku_prefix'],
         ]);
     }
 
     public function store(Request $request)
     {
-        $validated =$request->validate([
+        $validated = $request->validate([
             'category_id' => 'required|exists:categories,id',
             'brand_id' => 'required|exists:brands,id',
             'name' => 'required|string|max:255',
@@ -218,7 +233,10 @@ public function index(Request $request)
             'variants.*.low_stock_threshold' => 'nullable|integer|min:0',
         ]);
 
-        DB::transaction(function () use ($request, $validated) {$product = Product::create([
+        $defaultThreshold = SettingsController::all()['default_low_stock_threshold'];
+
+        DB::transaction(function () use ($request, $validated, $defaultThreshold) {
+            $product = Product::create([
                 'category_id' => $validated['category_id'],
                 'brand_id' => $validated['brand_id'],
                 'name' => $validated['name'],
@@ -236,23 +254,24 @@ public function index(Request $request)
             if ($request->hasFile('images')) {
                 $primaryIndex = (int) ($validated['primary_image_index'] ?? 0);
 
-                foreach ($request->file('images') as$index => $file) {$path = $file->store("products/{$product->id}", 'public');
+                foreach ($request->file('images') as $index => $file) {
+                    $path = $file->store("products/{$product->id}", 'public');
 
                     $product->media()->create([
                         'file_path' => $path,
-                        'is_primary' => $index ===$primaryIndex,
+                        'is_primary' => $index === $primaryIndex,
                         'order' => $index,
                     ]);
                 }
             }
 
-            foreach ($validated['variants'] as$variant) {
-                $productVariant =$product->variants()->create([
+            foreach ($validated['variants'] as $variant) {
+                $productVariant = $product->variants()->create([
                     'sku' => $variant['sku'],
                     'variant_label' => $variant['variant_label'],
                     'price_override' => $variant['price_override'] ?? null,
                     'stock_qty' => $variant['stock_qty'],
-                    'low_stock_threshold' => $variant['low_stock_threshold'] ?? 10,
+                    'low_stock_threshold' => $variant['low_stock_threshold'] ?? $defaultThreshold,
                 ]);
 
                 if ($productVariant->stock_qty > 0) {
@@ -275,7 +294,7 @@ public function index(Request $request)
         $product->load([
             'variants',
             'tags:id,name,color_code',
-            'media' => fn ($q) =>$q->orderByDesc('is_primary')->orderBy('order'),
+            'media' => fn($q) => $q->orderByDesc('is_primary')->orderBy('order'),
         ]);
 
         return Inertia::render('Products/Edit', [
@@ -286,7 +305,7 @@ public function index(Request $request)
         ]);
     }
 
-    public function update(Request $request, Product$product)
+    public function update(Request $request, Product $product)
     {
         $rules = [
             'category_id' => 'required|exists:categories,id',
@@ -312,7 +331,7 @@ public function index(Request $request)
             'variants.*.low_stock_threshold' => 'nullable|integer|min:0',
         ];
 
-        foreach ($request->input('variants', []) as $index =>$variant) {
+        foreach ($request->input('variants', []) as $index => $variant) {
             $rules["variants.{$index}.sku"] = [
                 'required',
                 'string',
@@ -322,8 +341,10 @@ public function index(Request $request)
         }
 
         $validated = $request->validate($rules);
+        $defaultThreshold = SettingsController::all()['default_low_stock_threshold'];
 
-        DB::transaction(function () use ($request,$product, $validated) {$product->update([
+        DB::transaction(function () use ($request, $product, $validated, $defaultThreshold) {
+            $product->update([
                 'category_id' => $validated['category_id'],
                 'brand_id' => $validated['brand_id'],
                 'name' => $validated['name'],
@@ -340,22 +361,24 @@ public function index(Request $request)
                 ->filter()
                 ->all();
 
-            $product->variants()->whereNotIn('id',$submittedIds)->delete();
+            $product->variants()->whereNotIn('id', $submittedIds)->delete();
 
-            foreach ($validated['variants'] as$variantData) {
-                if (!empty($variantData['id'])) {$existing = $product->variants()->findOrFail($variantData['id']);
-                    $oldStock =$existing->stock_qty;
-                    $newStock = (int)$variantData['stock_qty'];
+            foreach ($validated['variants'] as $variantData) {
+                if (!empty($variantData['id'])) {
+                    $existing = $product->variants()->findOrFail($variantData['id']);
+                    $oldStock = $existing->stock_qty;
+                    $newStock = (int) $variantData['stock_qty'];
 
                     $existing->update([
                         'sku' => $variantData['sku'],
                         'variant_label' => $variantData['variant_label'],
                         'price_override' => $variantData['price_override'] ?? null,
                         'stock_qty' => $newStock,
-                        'low_stock_threshold' => $variantData['low_stock_threshold'] ?? 10,
+                        'low_stock_threshold' => $variantData['low_stock_threshold'] ?? $defaultThreshold,
                     ]);
 
-                    if ($oldStock !== $newStock) {$diff = $newStock -$oldStock;
+                    if ($oldStock !== $newStock) {
+                        $diff = $newStock - $oldStock;
                         InventoryMovement::create([
                             'variant_id' => $existing->id,
                             'user_id' => auth()->id(),
@@ -365,12 +388,12 @@ public function index(Request $request)
                         ]);
                     }
                 } else {
-                    $created =$product->variants()->create([
+                    $created = $product->variants()->create([
                         'sku' => $variantData['sku'],
                         'variant_label' => $variantData['variant_label'],
                         'price_override' => $variantData['price_override'] ?? null,
                         'stock_qty' => $variantData['stock_qty'],
-                        'low_stock_threshold' => $variantData['low_stock_threshold'] ?? 10,
+                        'low_stock_threshold' => $variantData['low_stock_threshold'] ?? $defaultThreshold,
                     ]);
 
                     if ($created->stock_qty > 0) {
@@ -385,9 +408,11 @@ public function index(Request $request)
                 }
             }
 
-            if (!empty($validated['deleted_media_ids'])) {$toDelete = $product->media()->whereIn('id',$validated['deleted_media_ids'])->get();
-                foreach ($toDelete as$media) {
-                    Storage::disk('public')->delete($media->file_path);$media->delete();
+            if (!empty($validated['deleted_media_ids'])) {
+                $toDelete = $product->media()->whereIn('id', $validated['deleted_media_ids'])->get();
+                foreach ($toDelete as $media) {
+                    Storage::disk('public')->delete($media->file_path);
+                    $media->delete();
                 }
             }
 
@@ -395,25 +420,28 @@ public function index(Request $request)
             $nextOrder = ($product->media()->max('order') ?? -1) + 1;
 
             if ($request->hasFile('new_images')) {
-                foreach ($request->file('new_images') as$index => $file) {$path = $file->store("products/{$product->id}", 'public');
-                    $createdMedia[$index] =$product->media()->create([
+                foreach ($request->file('new_images') as $index => $file) {
+                    $path = $file->store("products/{$product->id}", 'public');
+                    $createdMedia[$index] = $product->media()->create([
                         'file_path' => $path,
                         'is_primary' => false,
-                        'order' => $nextOrder +$index,
+                        'order' => $nextOrder + $index,
                     ]);
                 }
             }
 
             $product->media()->update(['is_primary' => false]);
 
-            if (!empty($validated['primary_media_id'])) {$product->media()
+            if (!empty($validated['primary_media_id'])) {
+                $product->media()
                     ->where('id', $validated['primary_media_id'])
                     ->update(['is_primary' => true]);
             } elseif (isset($validated['primary_new_image_index']) && isset($createdMedia[$validated['primary_new_image_index']])) {
                 $createdMedia[$validated['primary_new_image_index']]->update(['is_primary' => true]);
             } else {
-                $firstMedia =$product->media()->orderBy('order')->first();
-                if ($firstMedia) {$firstMedia->update(['is_primary' => true]);
+                $firstMedia = $product->media()->orderBy('order')->first();
+                if ($firstMedia) {
+                    $firstMedia->update(['is_primary' => true]);
                 }
             }
         });
@@ -424,7 +452,8 @@ public function index(Request $request)
     public function destroy(Product $product)
     {
         DB::transaction(function () use ($product) {
-            $product->variants()->delete();$product->delete();
+            $product->variants()->delete();
+            $product->delete();
         });
 
         return redirect()->route('inventory.index')->with('success', 'Product archived.');
@@ -435,7 +464,8 @@ public function index(Request $request)
         $product = Product::onlyTrashed()->findOrFail($id);
 
         DB::transaction(function () use ($product) {
-            $product->restore();$product->variants()->onlyTrashed()->restore();
+            $product->restore();
+            $product->variants()->onlyTrashed()->restore();
         });
 
         return redirect()->route('inventory.index')->with('success', 'Product restored successfully.');

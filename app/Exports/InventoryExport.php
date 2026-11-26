@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Http\Controllers\SettingsController;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
@@ -21,14 +22,16 @@ class InventoryExport implements FromQuery, WithHeadings, WithMapping, ShouldAut
 
     public function headings(): array
     {
+        $currency = SettingsController::all()['currency_symbol'] ?? '₱';
+
         return [
             'SKU',
             'Product Name',
             'Variant',
             'Category',
             'Brand',
-            'Cost Price (PHP)',
-            'Selling Price (PHP)',
+            "Cost Price ({$currency})",
+            "Selling Price ({$currency})",
             'Stock Qty',
             'Low Stock Threshold',
             'Status',

@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Http\Controllers\SettingsController;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
@@ -36,9 +37,11 @@ class InventoryMovementExport implements FromQuery, WithHeadings, WithMapping, S
 
     public function map($movement): array
     {
+        $dateFormat = SettingsController::all()['export_date_format'] ?? 'Y-m-d';
+
         return [
             $movement->id,
-            $movement->created_at?->format('Y-m-d H:i:s') ?? '—',
+            $movement->created_at?->format("{$dateFormat} H:i:s") ?? '—',
             $movement->variant?->product?->name ?? 'Deleted Product',
             $movement->variant?->variant_label ?: 'Standard',
             $movement->variant?->sku ?? '—',

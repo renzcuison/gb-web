@@ -76,6 +76,8 @@ class InventoryController extends Controller
 
     public function index(Request $request)
     {
+        $settings = SettingsController::all();
+
         $inventory = $this->buildFilteredQuery($request)
             ->paginate(15)
             ->withQueryString();
@@ -102,6 +104,7 @@ class InventoryController extends Controller
                 'brand' => $request->input('brand') ? (int) $request->input('brand') : null,
                 'sort' => $request->input('sort', 'stock_asc'),
             ],
+            'imsSettings' => $settings,
         ]);
     }
 
@@ -120,19 +123,29 @@ class InventoryController extends Controller
 
     public function adjust(Request $request)
     {
+        $settings = SettingsController::all();
+
         $validated = $request->validate([
             'variant_id' => 'required|exists:product_variants,id',
             'quantity' => 'required|integer|min:1',
             'type' => 'required|in:in,out',
-            'reason' => 'nullable|string|max:255',
+            'reason' => [
+                $settings['require_adjustment_reason'] ? 'required' : 'nullable',
+                'string',
+                'max:255',
+            ],
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $settings) {
             $variant = ProductVariant::lockForUpdate()->findOrFail($validated['variant_id']);
 
-            if ($validated['type'] === 'out' && $variant->stock_qty < $validated['quantity']) {
+            if (
+                $validated['type'] === 'out'
+                && ! $settings['allow_negative_stock']
+                && $variant->stock_qty < $validated['quantity']
+            ) {
                 throw ValidationException::withMessages([
-                    'quantity' => 'Insufficient stock quantity for this adjustment.',
+                    'quantity' => 'Insufficient stock quantity for this adjustment (negative stock is disabled in System Preferences).',
                 ]);
             }
 
@@ -141,7 +154,7 @@ class InventoryController extends Controller
                 'user_id' => auth()->id(),
                 'quantity' => $validated['quantity'],
                 'type' => $validated['type'],
-                'reason' => $validated['reason'],
+                'reason' => $validated['reason'] ?? null,
             ]);
 
             if ($validated['type'] === 'in') {
@@ -151,7 +164,10 @@ class InventoryController extends Controller
             }
 
             $variant->refresh();
-            $variant->syncStockAlert();
+
+            if (method_exists($variant, 'syncStockAlert')) {
+                $variant->syncStockAlert();
+            }
         });
 
         return back()->with('success', 'Inventory adjusted successfully.');
