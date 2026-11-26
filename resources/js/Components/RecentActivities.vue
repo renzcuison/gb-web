@@ -98,8 +98,8 @@ onUnmounted(() => {
         </button>
 
         <div v-if="isRecentOpen"
-            class="absolute left-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl py-2 z-50 text-slate-700 dark:text-zinc-200">
-            <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-zinc-800">
+            class="absolute left-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl z-50 overflow-hidden text-slate-700 dark:text-zinc-200">
+            <div class="flex items-center justify-between px-4 pt-3.5 pb-2">
                 <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
                     Recent Activities
                 </span>
@@ -115,10 +115,10 @@ onUnmounted(() => {
                 </div>
             </div>
 
-            <div class="divide-y divide-slate-100 dark:divide-zinc-800/60 max-h-80 overflow-y-auto">
+            <div class="max-h-80 overflow-y-auto px-1.5 pb-2 space-y-0.5">
                 <Link v-for="activity in recentActivities" :key="activity.id"
                     :href="activity.href || '/inventory/movements'" @click="isRecentOpen = false"
-                    class="flex items-start justify-between gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition">
+                    class="flex items-start justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition">
                     <div class="min-w-0 flex-1">
                         <p class="text-xs font-medium text-slate-800 dark:text-zinc-200">
                             {{ activity.description || activity.title }}

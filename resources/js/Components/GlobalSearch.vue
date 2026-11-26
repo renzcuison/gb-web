@@ -162,9 +162,9 @@ const getCategoryIcon = (type) => {
                 </button>
 
                 <div v-if="isCategoryDropdownOpen"
-                    class="absolute top-full left-0 mt-1.5 w-36 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-lg shadow-lg py-1 z-50 text-xs">
+                    class="absolute top-full left-0 mt-1.5 w-36 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-lg shadow-lg p-1 space-y-0.5 z-50 text-xs">
                     <button v-for="cat in searchCategories" :key="cat.name" @click="selectCategory(cat.name)"
-                        class="w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-slate-100 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 transition"
+                        class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left hover:bg-slate-100 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 transition"
                         :class="{ 'font-bold bg-slate-50 dark:bg-zinc-800/50': selectedCategory === cat.name }">
                         <component :is="cat.icon" class="h-3.5 w-3.5 text-slate-400" />
                         <span>{{ cat.name }}</span>
@@ -194,11 +194,10 @@ const getCategoryIcon = (type) => {
 
         <div v-if="isSearchFocused && searchQuery.trim().length >= 2"
             class="absolute left-0 top-full mt-2 w-full min-w-[320px] sm:min-w-[420px] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl z-50 overflow-hidden">
-            <div v-if="searchResults.length > 0"
-                class="divide-y divide-slate-100 dark:divide-zinc-800/60 max-h-80 overflow-y-auto">
+            <div v-if="searchResults.length > 0" class="max-h-80 overflow-y-auto p-1.5 space-y-0.5">
                 <Link v-for="(result, idx) in searchResults" :key="result.id" :href="result.href"
                     @click="isSearchFocused = false" @mouseenter="activeIndex = idx" :class="[
-                        'flex items-center justify-between px-4 py-2.5 transition group',
+                        'flex items-center justify-between px-3 py-2.5 rounded-lg transition group',
                         activeIndex === idx ? 'bg-slate-100 dark:bg-zinc-800/80' : 'hover:bg-slate-50 dark:hover:bg-zinc-800/50'
                     ]">
                     <div class="flex items-center gap-3 min-w-0">
