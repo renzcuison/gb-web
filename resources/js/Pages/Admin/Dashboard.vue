@@ -56,11 +56,10 @@ const formatCurrency = (val) =>
         </Link>
       </div>
 
-      <div
-        class="grid grid-cols-2 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80 dark:divide-zinc-800 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl overflow-hidden">
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <Link
           :href="route('inventory.index', { status: 'out_of_stock' })"
-          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          class="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
           <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
             <span>Out of Stock</span>
             <span>→</span>
@@ -78,7 +77,7 @@ const formatCurrency = (val) =>
 
         <Link
           :href="route('inventory.index', { status: 'low_stock' })"
-          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          class="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
           <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
             <span>Low Stock</span>
             <span>→</span>
@@ -96,7 +95,7 @@ const formatCurrency = (val) =>
 
         <Link
           :href="route('inquiries.index', { status: 'new' })"
-          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          class="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
           <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
             <span>New Inquiries</span>
             <span>→</span>
@@ -114,7 +113,7 @@ const formatCurrency = (val) =>
 
         <Link
           :href="route('inventory.index')"
-          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          class="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
           <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
             <span>Total SKUs</span>
             <span>→</span>
@@ -124,7 +123,7 @@ const formatCurrency = (val) =>
           </div>
         </Link>
 
-        <div class="px-4 py-3.5 col-span-2 lg:col-span-1">
+        <div class="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl px-4 py-3.5 col-span-2 lg:col-span-1">
           <div class="text-xs text-slate-500 dark:text-zinc-400">Stock Valuation</div>
           <div class="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-zinc-100">
             {{ formatCurrency(stats.totalValue) }}

@@ -1,0 +1,2194 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: resources/js/Pages/Inventory/**, resources/js/Layouts/**, app/Http/Controllers/*Inventory*
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/
+  Http/
+    Controllers/
+      InventoryAlertController.php
+      InventoryController.php
+      InventoryMovementController.php
+resources/
+  js/
+    Layouts/
+      AdminLayout.vue
+      AuthenticatedLayout.vue
+      GuestLayout.vue
+    Pages/
+      Inventory/
+        Components/
+          InventoryDetailSheet.vue
+          InventoryTable.vue
+          InventoryToolbar.vue
+          StockAdjustmentModal.vue
+        Index.vue
+        Movements.vue
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/Http/Controllers/InventoryAlertController.php">
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\InventoryAlert;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+
+class InventoryAlertController extends Controller
+{
+    public function index(Request $request)
+    {
+        $search = trim((string) $request->input('search', ''));
+        $status = $request->input('status', 'unresolved');
+        $severity = $request->input('severity', 'all');
+
+        $query = InventoryAlert::with([
+            'variant.product.category',
+            'variant.product.brand',
+        ])->whereHas('variant');
+
+        if ($status === 'unresolved') {
+            $query->where('is_resolved', false);
+        } elseif ($status === 'resolved') {
+            $query->where('is_resolved', true);
+        }
+
+        if ($severity === 'out_of_stock') {
+            $query->whereHas('variant', fn ($q) => $q->where('stock_qty', '<=', 0));
+        } elseif ($severity === 'low_stock') {
+            $query->whereHas('variant', fn ($q) => $q->where('stock_qty', '>', 0));
+        }
+
+        if ($search !== '') {
+            $query->whereHas('variant', function ($vq) use ($search) {
+                $vq->where('sku', 'like', "%{$search}%")
+                    ->orWhere('variant_label', 'like', "%{$search}%")
+                    ->orWhereHas('product', fn ($pq) => $pq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $alerts = $query
+            ->orderBy('is_resolved', 'asc')
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        $stats = [
+            'unresolved' => InventoryAlert::where('is_resolved', false)->whereHas('variant')->count(),
+            'out_of_stock' => InventoryAlert::where('is_resolved', false)
+                ->whereHas('variant', fn ($q) => $q->where('stock_qty', '<=', 0))
+                ->count(),
+            'low_stock' => InventoryAlert::where('is_resolved', false)
+                ->whereHas('variant', fn ($q) => $q->where('stock_qty', '>', 0))
+                ->count(),
+            'resolved' => InventoryAlert::where('is_resolved', true)->whereHas('variant')->count(),
+        ];
+
+        return Inertia::render('Admin/Alerts/Index', [
+            'alerts' => $alerts,
+            'stats' => $stats,
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+                'severity' => $severity,
+            ],
+        ]);
+    }
+
+    public function resolve(InventoryAlert $alert)
+    {
+        if (! $alert->is_resolved) {
+            $alert->update(['is_resolved' => true]);
+        }
+
+        return back()->with('success', 'Alert marked as resolved.');
+    }
+
+    public function resolveAll()
+    {
+        $updated = InventoryAlert::where('is_resolved', false)->update(['is_resolved' => true]);
+
+        return back()->with('success', "{$updated} open alert(s) marked as resolved.");
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/InventoryMovementController.php">
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Exports\InventoryMovementExport;
+use App\Models\InventoryMovement;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Excel as ExcelFormat;
+use Maatwebsite\Excel\Facades\Excel;
+
+class InventoryMovementController extends Controller
+{
+    protected function buildBaseQuery(Request $request): Builder
+    {
+        $search = trim((string) $request->input('search', ''));
+        $userId = $request->input('user');
+        $dateFrom = $request->input('from');
+        $dateTo = $request->input('to');
+
+        $query = InventoryMovement::with([
+            'variant' => fn ($q) => $q->withTrashed()->with([
+                'product' => fn ($pq) => $pq->withTrashed(),
+            ]),
+            'user:id,name',
+        ]);
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('reason', 'like', "%{$search}%")
+                    ->orWhereHas('variant', function ($vq) use ($search) {
+                        $vq->withTrashed()
+                            ->where('sku', 'like', "%{$search}%")
+                            ->orWhere('variant_label', 'like', "%{$search}%")
+                            ->orWhereHas('product', fn ($pq) => $pq->withTrashed()->where('name', 'like', "%{$search}%"));
+                    });
+            });
+        }
+
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        if ($dateFrom) {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+
+        return $query;
+    }
+
+    public function index(Request $request)
+    {
+        $search = trim((string) $request->input('search', ''));
+        $type = $request->input('type', 'all');
+        $userId = $request->input('user');
+        $dateFrom = $request->input('from');
+        $dateTo = $request->input('to');
+
+        $baseQuery = $this->buildBaseQuery($request);
+
+        $stats = [
+            'total' => (clone $baseQuery)->count(),
+            'in_count' => (clone $baseQuery)->where('type', 'in')->count(),
+            'out_count' => (clone $baseQuery)->where('type', 'out')->count(),
+            'units_in' => (int) (clone $baseQuery)->where('type', 'in')->sum('quantity'),
+            'units_out' => (int) (clone $baseQuery)->where('type', 'out')->sum('quantity'),
+        ];
+
+        $query = clone $baseQuery;
+
+        if (in_array($type, ['in', 'out'], true)) {
+            $query->where('type', $type);
+        }
+
+        $movements = $query
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
+
+        $actors = User::whereIn(
+            'id',
+            InventoryMovement::whereNotNull('user_id')->distinct()->pluck('user_id')
+        )
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return Inertia::render('Inventory/Movements', [
+            'movements' => $movements,
+            'stats' => $stats,
+            'actors' => $actors,
+            'filters' => [
+                'search' => $search,
+                'type' => $type,
+                'user' => $userId ? (int) $userId : null,
+                'from' => $dateFrom ?: '',
+                'to' => $dateTo ?: '',
+            ],
+        ]);
+    }
+
+    public function export(Request $request)
+    {
+        $type = $request->input('type', 'all');
+        $query = $this->buildBaseQuery($request);
+
+        if (in_array($type, ['in', 'out'], true)) {
+            $query->where('type', $type);
+        }
+
+        $query->latest();
+
+        $format = $request->input('format', 'xlsx') === 'csv' ? 'csv' : 'xlsx';
+        $writerType = $format === 'csv' ? ExcelFormat::CSV : ExcelFormat::XLSX;
+        $filename = 'greatbuy-movements-' . now()->format('Y-m-d-His') . '.' . $format;
+
+        return Excel::download(
+            new InventoryMovementExport($query),
+            $filename,
+            $writerType
+        );
+    }
+}
+</file>
+
+<file path="resources/js/Pages/Inventory/Components/StockAdjustmentModal.vue">
+<script setup>
+import { watch } from 'vue'
+import { useForm } from '@inertiajs/vue3'
+import { Button } from '@/Components/ui/button'
+import { Input } from '@/Components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/Components/ui/dialog'
+
+const props = defineProps({
+  open: Boolean,
+  variant: Object,
+})
+
+const emit = defineEmits(['update:open'])
+
+const form = useForm({
+  variant_id: '',
+  quantity: 1,
+  type: 'in',
+  reason: '',
+})
+
+watch(
+  () => props.variant,
+  (val) => {
+    if (val) {
+      form.clearErrors()
+      form.variant_id = val.id
+      form.quantity = 1
+      form.type = 'in'
+      form.reason = ''
+    }
+  }
+)
+
+const close = () => {
+  emit('update:open', false)
+  form.reset()
+}
+
+const submit = () => {
+  form.post(route('inventory.adjust'), {
+    preserveScroll: true,
+    onSuccess: () => close(),
+  })
+}
+</script>
+
+<template>
+  <Dialog :open="open" @update:open="close">
+    <DialogContent class="sm:max-w-[400px] p-5 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100 shadow-none">
+      <DialogHeader class="pb-2 border-b border-slate-100 dark:border-zinc-800/80">
+        <DialogTitle class="text-sm font-semibold text-slate-900 dark:text-zinc-100">
+          Adjust Stock Levels
+        </DialogTitle>
+        <DialogDescription v-if="variant" class="text-xs font-normal text-slate-500 dark:text-zinc-400 mt-0.5">
+          {{ variant.product?.name }} —
+          <span class="font-mono text-slate-600 dark:text-zinc-300">{{ variant.variant_label }}</span>
+        </DialogDescription>
+      </DialogHeader>
+
+      <form @submit.prevent="submit" class="space-y-3.5 pt-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1.5">
+            Adjustment Type
+          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              @click="form.type = 'in'"
+              :class="[
+                'py-2 px-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-1.5 transition-all shadow-none',
+                form.type === 'in'
+                  ? 'border-emerald-500/60 bg-emerald-50/60 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700/60'
+                  : 'border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400',
+              ]">
+              <span class="text-sm font-bold">＋</span>
+              <span>Stock In</span>
+            </button>
+            <button
+              type="button"
+              @click="form.type = 'out'"
+              :class="[
+                'py-2 px-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-1.5 transition-all shadow-none',
+                form.type === 'out'
+                  ? 'border-rose-500/60 bg-rose-50/60 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-700/60'
+                  : 'border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400',
+              ]">
+              <span class="text-sm font-bold">－</span>
+              <span>Stock Out</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label for="quantity" class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1.5">
+            Quantity
+          </label>
+          <Input
+            v-model.number="form.quantity"
+            type="number"
+            id="quantity"
+            min="1"
+            class="h-8 text-xs font-mono font-medium dark:bg-zinc-800/60 dark:border-zinc-700/80 dark:text-zinc-100 focus-visible:ring-1 shadow-none"
+          />
+          <p v-if="form.errors.quantity" class="text-xs text-rose-500 dark:text-rose-400 mt-1">
+            {{ form.errors.quantity }}
+          </p>
+        </div>
+
+        <div>
+          <label for="reason" class="block text-xs font-medium text-slate-600 dark:text-zinc-400 mb-1.5">
+            Reason
+          </label>
+          <textarea
+            v-model="form.reason"
+            id="reason"
+            rows="2.5"
+            placeholder="e.g., Weekly restocking, damaged item write-off"
+            class="flex min-h-[70px] w-full rounded-md border border-slate-200 dark:border-zinc-800 bg-transparent px-2.5 py-1.5 text-xs text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400 dark:focus-visible:ring-zinc-600 shadow-none"
+          />
+          <p v-if="form.errors.reason" class="text-xs text-rose-500 dark:text-rose-400 mt-1">
+            {{ form.errors.reason }}
+          </p>
+        </div>
+
+        <DialogFooter class="pt-3 border-t border-slate-100 dark:border-zinc-800/80 gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            @click="close"
+            class="h-8 text-xs font-medium text-slate-600 dark:text-zinc-400 dark:hover:text-zinc-100 shadow-none">
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            :disabled="form.processing"
+            class="h-8 text-xs font-medium bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 shadow-none">
+            Confirm Adjustment
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  </Dialog>
+</template>
+</file>
+
+<file path="resources/js/Pages/Inventory/Movements.vue">
+<script setup>
+import { ref, computed, watch } from 'vue'
+import { Head, Link, router } from '@inertiajs/vue3'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
+import InventoryNavTabs from '@/Components/InventoryNavTabs.vue'
+import { Button } from '@/Components/ui/button'
+import { Input } from '@/Components/ui/input'
+import { Search, X, ChevronDown, Check, Download } from 'lucide-vue-next'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/Components/ui/table'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/Components/ui/dropdown-menu'
+
+defineOptions({ layout: AdminLayout })
+
+const props = defineProps({
+  movements: Object,
+  stats: {
+    type: Object,
+    default: () => ({ total: 0, in_count: 0, out_count: 0, units_in: 0, units_out: 0 }),
+  },
+  actors: { type: Array, default: () => [] },
+  filters: {
+    type: Object,
+    default: () => ({ search: '', type: 'all', user: null, from: '', to: '' }),
+  },
+})
+
+const search = ref(props.filters.search || '')
+const type = ref(props.filters.type || 'all')
+const user = ref(props.filters.user || null)
+const from = ref(props.filters.from || '')
+const to = ref(props.filters.to || '')
+
+const typeTabs = computed(() => [
+  { key: 'all', label: 'All Movements', count: props.stats.total },
+  { key: 'in', label: 'Stock In', count: props.stats.in_count },
+  { key: 'out', label: 'Stock Out', count: props.stats.out_count },
+])
+
+const selectedActorName = computed(
+  () => props.actors.find((a) => a.id === user.value)?.name || 'Recorded By'
+)
+
+const hasActiveFilters = computed(
+  () =>
+    Boolean(search.value) ||
+    type.value !== 'all' ||
+    user.value !== null ||
+    Boolean(from.value) ||
+    Boolean(to.value)
+)
+
+const buildExportUrl = (format) => {
+  const params = new URLSearchParams()
+  params.set('format', format)
+  if (search.value) params.set('search', search.value)
+  if (type.value && type.value !== 'all') params.set('type', type.value)
+  if (user.value) params.set('user', String(user.value))
+  if (from.value) params.set('from', from.value)
+  if (to.value) params.set('to', to.value)
+  return `${route('inventory.movements.export')}?${params.toString()}`
+}
+
+const applyFilters = () => {
+  router.get(
+    route('inventory.movements.index'),
+    {
+      search: search.value || undefined,
+      type: type.value !== 'all' ? type.value : undefined,
+      user: user.value || undefined,
+      from: from.value || undefined,
+      to: to.value || undefined,
+    },
+    { preserveState: true, preserveScroll: true, replace: true }
+  )
+}
+
+let timer = null
+watch(search, () => {
+  clearTimeout(timer)
+  timer = setTimeout(applyFilters, 300)
+})
+
+const setType = (val) => {
+  type.value = val
+  applyFilters()
+}
+
+const toggleUser = (id) => {
+  user.value = user.value === id ? null : id
+  applyFilters()
+}
+
+const resetAll = () => {
+  search.value = ''
+  type.value = 'all'
+  user.value = null
+  from.value = ''
+  to.value = ''
+  applyFilters()
+}
+
+const formatTimestamp = (dateStr) => {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+</script>
+
+<template>
+  <div class="w-full h-[calc(100vh-4rem)] overflow-y-auto pb-8 pr-1 space-y-4">
+    <Head title="Movement Audit Logs" />
+
+    <div class="sticky top-0 z-20 bg-slate-50 dark:bg-zinc-950 -mt-2 pt-2 pb-1">
+      <InventoryNavTabs />
+    </div>
+
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+      <h1 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-zinc-100">
+        Movement Audit Logs
+      </h1>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-3 text-xs font-mono">
+          <span class="text-emerald-600 dark:text-emerald-400">
+            +{{ stats.units_in.toLocaleString() }} units in
+          </span>
+          <span class="text-slate-300 dark:text-zinc-700">|</span>
+          <span class="text-rose-600 dark:text-rose-400">
+            -{{ stats.units_out.toLocaleString() }} units out
+          </span>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              size="sm"
+              variant="outline"
+              class="h-8 text-xs font-medium gap-1.5 border-slate-200 dark:border-zinc-800 bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 px-3 shadow-none">
+              <Download class="h-3.5 w-3.5" />
+              <span>Export</span>
+              <ChevronDown class="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-44 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
+            <DropdownMenuItem as-child class="text-xs cursor-pointer">
+              <a :href="buildExportUrl('xlsx')">Export Excel (.xlsx)</a>
+            </DropdownMenuItem>
+            <DropdownMenuItem as-child class="text-xs cursor-pointer">
+              <a :href="buildExportUrl('csv')">Export CSV (.csv)</a>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+
+    <div class="space-y-3">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
+        <div class="relative flex-1 max-w-xs">
+          <Search class="h-3.5 w-3.5 text-slate-400 dark:text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Input
+            v-model="search"
+            type="text"
+            placeholder="Search item, SKU, or reason..."
+            class="h-8 pl-8 pr-7 text-xs bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800 text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus-visible:ring-1 shadow-none"
+          />
+          <button
+            v-if="search"
+            type="button"
+            @click="search = ''"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-300">
+            <X class="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button
+                variant="outline"
+                size="sm"
+                :class="[
+                  'h-8 text-xs font-medium gap-1.5 px-2.5 shadow-none border-slate-200/80 dark:border-zinc-800',
+                  user
+                    ? 'bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                    : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-300',
+                ]">
+                <span>{{ selectedActorName }}</span>
+                <ChevronDown class="h-3 w-3 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" class="w-48 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
+              <template v-if="actors.length > 0">
+                <DropdownMenuItem
+                  v-for="actor in actors"
+                  :key="actor.id"
+                  @click="toggleUser(actor.id)"
+                  class="text-xs flex items-center justify-between cursor-pointer">
+                  <span>{{ actor.name }}</span>
+                  <Check v-if="user === actor.id" class="h-3.5 w-3.5" />
+                </DropdownMenuItem>
+              </template>
+              <div v-else class="px-2.5 py-2 text-xs text-slate-400 dark:text-zinc-500">
+                No recorded users
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div class="flex items-center gap-1.5">
+            <input
+              v-model="from"
+              type="date"
+              aria-label="From date"
+              @change="applyFilters"
+              class="h-8 rounded-md border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 text-xs text-slate-600 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-zinc-600"
+            />
+            <span class="text-xs text-slate-400 dark:text-zinc-500">to</span>
+            <input
+              v-model="to"
+              type="date"
+              aria-label="To date"
+              @change="applyFilters"
+              class="h-8 rounded-md border border-slate-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 text-xs text-slate-600 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-zinc-600"
+            />
+          </div>
+
+          <button
+            v-if="hasActiveFilters"
+            type="button"
+            @click="resetAll"
+            class="text-xs text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-1.5 transition-colors">
+            Reset
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-5 border-b border-slate-200/80 dark:border-zinc-800 text-xs">
+        <button
+          v-for="tab in typeTabs"
+          :key="tab.key"
+          type="button"
+          @click="setType(tab.key)"
+          :class="[
+            '-mb-px pb-2 border-b-2 transition-colors flex items-center gap-1.5',
+            type === tab.key
+              ? 'border-slate-900 text-slate-900 dark:border-zinc-100 dark:text-zinc-100 font-medium'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200',
+          ]">
+          <span>{{ tab.label }}</span>
+          <span class="font-mono text-[11px] opacity-60">{{ tab.count }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden shadow-none">
+      <div class="overflow-x-auto">
+        <Table>
+          <TableHeader class="bg-slate-50/50 dark:bg-zinc-900/50">
+            <TableRow class="border-b border-slate-200/80 dark:border-zinc-800 hover:bg-transparent">
+              <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Timestamp</TableHead>
+              <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Product / Variant</TableHead>
+              <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">SKU</TableHead>
+              <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Reason</TableHead>
+              <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Recorded By</TableHead>
+              <TableHead class="text-right text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Change</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow
+              v-for="move in movements.data"
+              :key="move.id"
+              class="border-b border-slate-100 dark:border-zinc-800/60 hover:bg-slate-50/60 dark:hover:bg-zinc-800/40 transition-colors">
+              <TableCell class="py-2.5 text-xs text-slate-500 dark:text-zinc-400 whitespace-nowrap font-mono">
+                {{ formatTimestamp(move.created_at) }}
+              </TableCell>
+
+              <TableCell class="py-2.5">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-xs font-medium text-slate-900 dark:text-zinc-100">
+                    {{ move.variant?.product?.name || 'Deleted Product' }}
+                  </span>
+                  <span
+                    v-if="move.variant?.deleted_at || move.variant?.product?.deleted_at"
+                    class="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400">
+                    Archived
+                  </span>
+                </div>
+                <div class="text-[11px] text-slate-500 dark:text-zinc-400">
+                  {{ move.variant?.variant_label || 'Standard' }}
+                </div>
+              </TableCell>
+
+              <TableCell class="py-2.5 font-mono text-xs text-slate-500 dark:text-zinc-400">
+                {{ move.variant?.sku || '—' }}
+              </TableCell>
+
+              <TableCell class="py-2.5 text-xs text-slate-600 dark:text-zinc-300 max-w-xs truncate">
+                {{ move.reason || (move.type === 'in' ? 'Manual Stock In' : 'Manual Stock Out') }}
+              </TableCell>
+
+              <TableCell class="py-2.5 text-xs text-slate-600 dark:text-zinc-400 whitespace-nowrap">
+                {{ move.user?.name || 'System' }}
+              </TableCell>
+
+              <TableCell class="py-2.5 text-right whitespace-nowrap">
+                <span
+                  :class="[
+                    'inline-flex items-center px-2 py-0.5 rounded font-mono text-xs font-medium',
+                    move.type === 'in'
+                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400'
+                      : 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400',
+                  ]">
+                  {{ move.type === 'in' ? '+' : '-' }}{{ move.quantity }}
+                </span>
+              </TableCell>
+            </TableRow>
+
+            <TableRow v-if="!movements.data || movements.data.length === 0">
+              <TableCell colspan="6" class="h-28 text-center text-xs text-slate-400 dark:text-zinc-500">
+                <div>No movement records found.</div>
+                <button
+                  v-if="hasActiveFilters"
+                  type="button"
+                  @click="resetAll"
+                  class="text-xs text-slate-700 dark:text-zinc-300 underline mt-1">
+                  Clear filters
+                </button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+
+      <div
+        v-if="movements.total > 0"
+        class="flex items-center justify-between px-4 py-2.5 border-t border-slate-200/80 dark:border-zinc-800 text-[11px] text-slate-500 dark:text-zinc-400">
+        <span class="font-mono">
+          {{ movements.from }}–{{ movements.to }} of {{ movements.total }}
+        </span>
+
+        <div v-if="movements.last_page > 1" class="flex items-center gap-4">
+          <Link
+            v-if="movements.prev_page_url"
+            :href="movements.prev_page_url"
+            preserve-scroll
+            preserve-state
+            class="hover:text-slate-900 dark:hover:text-zinc-100 transition-colors">
+            Previous
+          </Link>
+          <span v-else class="opacity-40">Previous</span>
+
+          <span class="font-mono">{{ movements.current_page }} / {{ movements.last_page }}</span>
+
+          <Link
+            v-if="movements.next_page_url"
+            :href="movements.next_page_url"
+            preserve-scroll
+            preserve-state
+            class="hover:text-slate-900 dark:hover:text-zinc-100 transition-colors">
+            Next
+          </Link>
+          <span v-else class="opacity-40">Next</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Layouts/GuestLayout.vue">
+<script setup>
+import Header from '@/Pages/Storefront/Header/Index.vue';
+</script>
+
+<template>
+    <div class="min-h-screen bg-white flex flex-col">
+        <Header />
+
+        <main class="flex-1 flex flex-col justify-center items-center px-6">
+            <div class="w-full sm:max-w-md">
+                <slot />
+            </div>
+        </main>
+    </div>
+</template>
+</file>
+
+<file path="resources/js/Pages/Inventory/Components/InventoryDetailSheet.vue">
+<script setup>
+import { Link, router } from '@inertiajs/vue3'
+import { Button } from '@/Components/ui/button'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/Components/ui/sheet'
+
+defineProps({
+  open: Boolean,
+  variant: Object,
+})
+
+const emit = defineEmits(['update:open', 'adjust'])
+
+const formatPrice = (variant) => {
+  const raw = variant?.price_override ?? variant?.product?.price ?? variant?.product?.base_price
+  if (raw === null || raw === undefined) return '—'
+  return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(raw))
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+</script>
+
+<template>
+  <Sheet :open="open" @update:open="emit('update:open', $event)">
+    <SheetContent
+      class="w-full sm:max-w-[400px] p-0 flex flex-col bg-white dark:bg-zinc-950 border-l border-slate-200 dark:border-zinc-800 shadow-none">
+      <template v-if="variant">
+        <SheetHeader class="p-5 pb-4 border-b border-slate-200/80 dark:border-zinc-800 text-left space-y-1">
+          <div class="font-mono text-[11px] text-slate-500 dark:text-zinc-400">
+            {{ variant.sku }}
+          </div>
+          <SheetTitle class="text-base font-semibold text-slate-900 dark:text-zinc-100">
+            {{ variant.product?.name }}
+          </SheetTitle>
+          <SheetDescription class="text-xs text-slate-500 dark:text-zinc-400">
+            {{ variant.variant_label || 'Standard' }}
+          </SheetDescription>
+        </SheetHeader>
+
+        <div class="flex-1 overflow-y-auto p-5 space-y-6">
+          <div
+            v-if="variant.product?.media && variant.product.media.length > 0"
+            class="aspect-video w-full rounded-lg border border-slate-200/80 dark:border-zinc-800 overflow-hidden bg-slate-50 dark:bg-zinc-900">
+            <img
+              :src="variant.product.media[0].url"
+              :alt="variant.product?.name"
+              class="h-full w-full object-cover"
+            />
+          </div>
+
+          <div v-if="variant.product?.tags && variant.product.tags.length > 0" class="flex flex-wrap gap-1.5">
+            <span
+              v-for="tag in variant.product.tags"
+              :key="tag.id"
+              class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border"
+              :style="{
+                backgroundColor: `${tag.color_code || '#64748b'}15`,
+                borderColor: `${tag.color_code || '#64748b'}40`,
+                color: tag.color_code || '#64748b'
+              }">
+              {{ tag.name }}
+            </span>
+          </div>
+
+          <div class="divide-y divide-slate-100 dark:divide-zinc-800/80 border-y border-slate-100 dark:border-zinc-800/80 text-xs">
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-slate-500 dark:text-zinc-400">On Hand</span>
+              <span class="font-mono font-medium text-slate-900 dark:text-zinc-100">
+                {{ variant.stock_qty }} units
+              </span>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-slate-500 dark:text-zinc-400">Alert Threshold</span>
+              <span class="font-mono text-slate-700 dark:text-zinc-300">
+                {{ variant.low_stock_threshold }} units
+              </span>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-slate-500 dark:text-zinc-400">Unit Price</span>
+              <span class="font-mono text-slate-700 dark:text-zinc-300">
+                {{ formatPrice(variant) }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-slate-500 dark:text-zinc-400">Category</span>
+              <span class="text-slate-800 dark:text-zinc-200">
+                {{ variant.product?.category?.name || '—' }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-slate-500 dark:text-zinc-400">Brand</span>
+              <span class="text-slate-800 dark:text-zinc-200">
+                {{ variant.product?.brand?.name || '—' }}
+              </span>
+            </div>
+          </div>
+
+          <div v-if="!variant.deleted_at" class="grid grid-cols-2 gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              @click="emit('adjust', variant)"
+              class="h-8 text-xs font-medium border-slate-200 dark:border-zinc-800 shadow-none">
+              Adjust Stock
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              as-child
+              class="h-8 text-xs font-medium border-slate-200 dark:border-zinc-800 shadow-none">
+              <Link :href="route('products.edit', variant.product_id)">
+                Edit Product
+              </Link>
+            </Button>
+          </div>
+          <Button
+            v-else
+            size="sm"
+            variant="outline"
+            @click="router.post(route('products.restore', variant.product_id), {}, { preserveScroll: true, onSuccess: () => emit('update:open', false) })"
+            class="w-full h-8 text-xs font-medium border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/50 dark:text-emerald-400 shadow-none">
+            Restore Product
+          </Button>
+
+          <div class="space-y-2">
+            <h3 class="text-xs font-medium text-slate-500 dark:text-zinc-400">
+              Recent Movements
+            </h3>
+
+            <div
+              v-if="variant.inventory_movements && variant.inventory_movements.length > 0"
+              class="divide-y divide-slate-100 dark:divide-zinc-800/80 border-t border-slate-100 dark:border-zinc-800/80">
+              <div
+                v-for="move in variant.inventory_movements"
+                :key="move.id"
+                class="py-2.5 flex items-center justify-between gap-3 text-xs">
+                <div class="min-w-0">
+                  <div class="text-slate-800 dark:text-zinc-200 truncate">
+                    {{ move.reason || (move.type === 'in' ? 'Stock In' : 'Stock Out') }}
+                  </div>
+                  <div class="text-[11px] text-slate-400 dark:text-zinc-500">
+                    {{ formatDate(move.created_at) }}
+                  </div>
+                </div>
+                <span
+                  :class="[
+                    'font-mono font-medium shrink-0',
+                    move.type === 'in' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
+                  ]">
+                  {{ move.type === 'in' ? '+' : '-' }}{{ move.quantity }}
+                </span>
+              </div>
+            </div>
+
+            <p v-else class="text-xs text-slate-400 dark:text-zinc-500 py-3">
+              No movements recorded yet.
+            </p>
+          </div>
+        </div>
+      </template>
+    </SheetContent>
+  </Sheet>
+</template>
+</file>
+
+<file path="resources/js/Pages/Inventory/Components/InventoryTable.vue">
+<script setup>
+import { ref } from 'vue'
+import { Link, router } from '@inertiajs/vue3'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/Components/ui/table'
+
+defineProps({
+  inventory: Object,
+  hasActiveFilters: Boolean,
+})
+
+const emit = defineEmits(['select', 'adjust'])
+
+const copiedSku = ref(null)
+const copySku = (sku) => {
+  navigator.clipboard?.writeText(sku)
+  copiedSku.value = sku
+  setTimeout(() => {
+    if (copiedSku.value === sku) copiedSku.value = null
+  }, 1200)
+}
+
+const getStockDisplay = (variant) => {
+  if (variant.stock_qty <= 0) {
+    return {
+      text: `${variant.stock_qty} units · Out`,
+      class: 'text-rose-600 dark:text-rose-400',
+    }
+  }
+  if (variant.stock_qty <= variant.low_stock_threshold) {
+    return {
+      text: `${variant.stock_qty} units · Low`,
+      class: 'text-amber-600 dark:text-amber-400',
+    }
+  }
+  return {
+    text: `${variant.stock_qty} units`,
+    class: 'text-slate-700 dark:text-zinc-300',
+  }
+}
+
+const getClassification = (variant) => {
+  const parts = [variant.product?.category?.name, variant.product?.brand?.name].filter(Boolean)
+  return parts.length > 0 ? parts.join(' · ') : '—'
+}
+
+const formatPrice = (variant) => {
+  const raw = variant.price_override ?? variant.product?.price ?? variant.product?.base_price
+  if (raw === null || raw === undefined) return '—'
+  return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(raw))
+}
+</script>
+
+<template>
+  <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden shadow-none">
+    <div class="overflow-x-auto">
+      <Table>
+        <TableHeader class="bg-slate-50/50 dark:bg-zinc-900/50">
+          <TableRow class="border-b border-slate-200/80 dark:border-zinc-800 hover:bg-transparent">
+            <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Product / Variant</TableHead>
+            <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">SKU</TableHead>
+            <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Category & Brand</TableHead>
+            <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Price</TableHead>
+            <TableHead class="text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Stock</TableHead>
+            <TableHead class="text-right text-xs font-medium text-slate-500 dark:text-zinc-400 h-9">Action</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow
+            v-for="variant in inventory.data"
+            :key="variant.id"
+            @click="emit('select', variant)"
+            class="border-b border-slate-100 dark:border-zinc-800/60 hover:bg-slate-50/60 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer">
+            <TableCell class="py-2.5">
+              <div class="text-xs font-medium text-slate-900 dark:text-zinc-100">
+                {{ variant.product?.name }}
+              </div>
+              <div class="text-[11px] text-slate-500 dark:text-zinc-400">
+                {{ variant.variant_label || 'Standard' }}
+              </div>
+            </TableCell>
+
+            <TableCell class="py-2.5" @click.stop>
+              <button
+                type="button"
+                @click="copySku(variant.sku)"
+                title="Click to copy SKU"
+                class="font-mono text-xs text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 transition-colors">
+                <span v-if="copiedSku === variant.sku" class="text-emerald-600 dark:text-emerald-400">Copied</span>
+                <span v-else>{{ variant.sku }}</span>
+              </button>
+            </TableCell>
+
+            <TableCell class="py-2.5 text-xs text-slate-500 dark:text-zinc-400">
+              {{ getClassification(variant) }}
+            </TableCell>
+
+            <TableCell class="py-2.5 font-mono text-xs text-slate-600 dark:text-zinc-400">
+              {{ formatPrice(variant) }}
+            </TableCell>
+
+            <TableCell class="py-2.5">
+              <span :class="['text-xs font-mono font-medium', getStockDisplay(variant).class]">
+                {{ getStockDisplay(variant).text }}
+              </span>
+            </TableCell>
+
+            <TableCell class="py-2.5 text-right" @click.stop>
+              <div v-if="!variant.deleted_at" class="inline-flex items-center gap-3">
+                <Link
+                  :href="route('products.edit', variant.product_id)"
+                  class="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
+                  Edit
+                </Link>
+                <button
+                  type="button"
+                  @click="emit('adjust', variant)"
+                  class="text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
+                  Adjust
+                </button>
+              </div>
+              <button
+                v-else
+                type="button"
+                @click="router.post(route('products.restore', variant.product_id), {}, { preserveScroll: true })"
+                class="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 transition-colors">
+                Restore
+              </button>
+            </TableCell>
+          </TableRow>
+
+          <TableRow v-if="!inventory.data || inventory.data.length === 0">
+            <TableCell colspan="6" class="h-28 text-center text-xs text-slate-400 dark:text-zinc-500">
+              <div>No inventory records found.</div>
+              <button
+                v-if="hasActiveFilters"
+                type="button"
+                @click="router.get(route('inventory.index'))"
+                class="text-xs text-slate-700 dark:text-zinc-300 underline mt-1">
+                Clear filters
+              </button>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+
+    <div
+      v-if="inventory.total > 0"
+      class="flex items-center justify-between px-4 py-2.5 border-t border-slate-200/80 dark:border-zinc-800 text-[11px] text-slate-500 dark:text-zinc-400">
+      <span class="font-mono">
+        {{ inventory.from }}–{{ inventory.to }} of {{ inventory.total }}
+      </span>
+
+      <div v-if="inventory.last_page > 1" class="flex items-center gap-4">
+        <Link
+          v-if="inventory.prev_page_url"
+          :href="inventory.prev_page_url"
+          preserve-scroll
+          preserve-state
+          class="hover:text-slate-900 dark:hover:text-zinc-100 transition-colors">
+          Previous
+        </Link>
+        <span v-else class="opacity-40">Previous</span>
+
+        <span class="font-mono">{{ inventory.current_page }} / {{ inventory.last_page }}</span>
+
+        <Link
+          v-if="inventory.next_page_url"
+          :href="inventory.next_page_url"
+          preserve-scroll
+          preserve-state
+          class="hover:text-slate-900 dark:hover:text-zinc-100 transition-colors">
+          Next
+        </Link>
+        <span v-else class="opacity-40">Next</span>
+      </div>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Pages/Inventory/Components/InventoryToolbar.vue">
+<script setup>
+import { ref, computed, watch } from 'vue'
+import { router } from '@inertiajs/vue3'
+import { Button } from '@/Components/ui/button'
+import { Input } from '@/Components/ui/input'
+import { Search, X, ChevronDown, Check } from 'lucide-vue-next'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/Components/ui/dropdown-menu'
+
+const props = defineProps({
+  stats: Object,
+  categories: { type: Array, default: () => [] },
+  brands: { type: Array, default: () => [] },
+  filters: Object,
+})
+
+const search = ref(props.filters.search || '')
+const status = ref(props.filters.status || 'all')
+const category = ref(props.filters.category || null)
+const brand = ref(props.filters.brand || null)
+const sort = ref(props.filters.sort || 'stock_asc')
+
+const statusTabs = computed(() => [
+  { key: 'all', label: 'All', count: props.stats.total },
+  { key: 'in_stock', label: 'In Stock', count: props.stats.in_stock },
+  { key: 'low_stock', label: 'Low Stock', count: props.stats.low_stock },
+  { key: 'out_of_stock', label: 'Out of Stock', count: props.stats.out_of_stock },
+  { key: 'archived', label: 'Archived', count: props.stats.archived ?? 0 },
+])
+
+const sortOptions = [
+  { value: 'stock_asc', label: 'Lowest Stock' },
+  { value: 'stock_desc', label: 'Highest Stock' },
+  { value: 'name_asc', label: 'Name (A–Z)' },
+  { value: 'sku_asc', label: 'SKU (A–Z)' },
+]
+
+const currentSortLabel = computed(
+  () => sortOptions.find((s) => s.value === sort.value)?.label || 'Sort'
+)
+const selectedCategoryName = computed(
+  () => props.categories.find((c) => c.id === category.value)?.name || 'Category'
+)
+const selectedBrandName = computed(
+  () => props.brands.find((b) => b.id === brand.value)?.name || 'Brand'
+)
+const hasActiveFilters = computed(
+  () => Boolean(search.value) || status.value !== 'all' || category.value !== null || brand.value !== null
+)
+
+const applyFilters = () => {
+  router.get(
+    route('inventory.index'),
+    {
+      search: search.value || undefined,
+      status: status.value !== 'all' ? status.value : undefined,
+      category: category.value || undefined,
+      brand: brand.value || undefined,
+      sort: sort.value !== 'stock_asc' ? sort.value : undefined,
+    },
+    { preserveState: true, preserveScroll: true, replace: true }
+  )
+}
+
+let timer = null
+watch(search, () => {
+  clearTimeout(timer)
+  timer = setTimeout(applyFilters, 300)
+})
+
+const setStatus = (val) => {
+  status.value = val
+  applyFilters()
+}
+
+const toggleCategory = (id) => {
+  category.value = category.value === id ? null : id
+  applyFilters()
+}
+
+const toggleBrand = (id) => {
+  brand.value = brand.value === id ? null : id
+  applyFilters()
+}
+
+const setSort = (val) => {
+  sort.value = val
+  applyFilters()
+}
+
+const resetAll = () => {
+  search.value = ''
+  status.value = 'all'
+  category.value = null
+  brand.value = null
+  sort.value = 'stock_asc'
+  applyFilters()
+}
+</script>
+
+<template>
+  <div class="space-y-3">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div class="relative flex-1 max-w-xs">
+        <Search class="h-3.5 w-3.5 text-slate-400 dark:text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Input
+          v-model="search"
+          type="text"
+          placeholder="Search item or SKU..."
+          class="h-8 pl-8 pr-7 text-xs bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800 text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus-visible:ring-1 shadow-none"
+        />
+        <button
+          v-if="search"
+          type="button"
+          @click="search = ''"
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-300">
+          <X class="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="outline"
+              size="sm"
+              :class="[
+                'h-8 text-xs font-medium gap-1.5 px-2.5 shadow-none border-slate-200/80 dark:border-zinc-800',
+                category
+                  ? 'bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                  : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-300',
+              ]">
+              <span>{{ selectedCategoryName }}</span>
+              <ChevronDown class="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-44 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
+            <template v-if="categories.length > 0">
+              <DropdownMenuItem
+                v-for="cat in categories"
+                :key="cat.id"
+                @click="toggleCategory(cat.id)"
+                class="text-xs flex items-center justify-between cursor-pointer">
+                <span>{{ cat.name }}</span>
+                <Check v-if="category === cat.id" class="h-3.5 w-3.5" />
+              </DropdownMenuItem>
+            </template>
+            <div v-else class="px-2.5 py-2 text-xs text-slate-400 dark:text-zinc-500">
+              No categories
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="outline"
+              size="sm"
+              :class="[
+                'h-8 text-xs font-medium gap-1.5 px-2.5 shadow-none border-slate-200/80 dark:border-zinc-800',
+                brand
+                  ? 'bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                  : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-300',
+              ]">
+              <span>{{ selectedBrandName }}</span>
+              <ChevronDown class="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-44 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
+            <template v-if="brands.length > 0">
+              <DropdownMenuItem
+                v-for="b in brands"
+                :key="b.id"
+                @click="toggleBrand(b.id)"
+                class="text-xs flex items-center justify-between cursor-pointer">
+                <span>{{ b.name }}</span>
+                <Check v-if="brand === b.id" class="h-3.5 w-3.5" />
+              </DropdownMenuItem>
+            </template>
+            <div v-else class="px-2.5 py-2 text-xs text-slate-400 dark:text-zinc-500">
+              No brands
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              variant="outline"
+              size="sm"
+              class="h-8 text-xs font-medium gap-1.5 px-2.5 bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 shadow-none">
+              <span>{{ currentSortLabel }}</span>
+              <ChevronDown class="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-40 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
+            <DropdownMenuItem
+              v-for="opt in sortOptions"
+              :key="opt.value"
+              @click="setSort(opt.value)"
+              class="text-xs flex items-center justify-between cursor-pointer">
+              <span>{{ opt.label }}</span>
+              <Check v-if="sort === opt.value" class="h-3.5 w-3.5" />
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <button
+          v-if="hasActiveFilters"
+          type="button"
+          @click="resetAll"
+          class="text-xs text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-1.5 transition-colors">
+          Reset
+        </button>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-5 border-b border-slate-200/80 dark:border-zinc-800 text-xs">
+      <button
+        v-for="tab in statusTabs"
+        :key="tab.key"
+        type="button"
+        @click="setStatus(tab.key)"
+        :class="[
+          '-mb-px pb-2 border-b-2 transition-colors flex items-center gap-1.5',
+          status === tab.key
+            ? 'border-slate-900 text-slate-900 dark:border-zinc-100 dark:text-zinc-100 font-medium'
+            : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200',
+        ]">
+        <span>{{ tab.label }}</span>
+        <span class="font-mono text-[11px] opacity-60">{{ tab.count }}</span>
+      </button>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Layouts/AuthenticatedLayout.vue">
+<script setup>
+import { ref } from 'vue';
+import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import Dropdown from '@/Components/Dropdown.vue';
+import DropdownLink from '@/Components/DropdownLink.vue';
+import NavLink from '@/Components/NavLink.vue';
+import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
+import ThemeToggle from '@/Components/ThemeToggle.vue';
+import { Link } from '@inertiajs/vue3';
+
+const showingNavigationDropdown = ref(false);
+</script>
+
+<template>
+    <div>
+        <div class="min-h-screen bg-gray-100 dark:bg-zinc-900 transition-colors duration-200">
+            <nav class="border-b border-gray-100 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div class="flex h-16 justify-between">
+                        <div class="flex">
+                            <div class="flex shrink-0 items-center">
+                                <Link :href="route('dashboard')">
+                                    <ApplicationLogo
+                                        class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200"
+                                    />
+                                </Link>
+                            </div>
+
+                            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                <NavLink
+                                    :href="route('dashboard')"
+                                    :active="route().current('dashboard')"
+                                >
+                                    Dashboard
+                                </NavLink>
+                            </div>
+                        </div>
+
+                        <div class="hidden sm:ms-6 sm:flex sm:items-center sm:space-x-3">
+                            <ThemeToggle />
+
+                            <div class="relative ms-3">
+                                <Dropdown align="right" width="48">
+                                    <template #trigger>
+                                        <span class="inline-flex rounded-md">
+                                            <button
+                                                type="button"
+                                                class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none dark:bg-zinc-900 dark:text-gray-400 dark:hover:text-gray-200"
+                                            >
+                                                {{ $page.props.auth.user.name }}
+
+                                                <svg
+                                                    class="-me-0.5 ms-2 h-4 w-4"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 20 20"
+                                                    fill="currentColor"
+                                                >
+                                                    <path
+                                                        fill-rule="evenodd"
+                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                        clip-rule="evenodd"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </span>
+                                    </template>
+
+                                    <template #content>
+                                        <DropdownLink :href="route('profile.edit')">
+                                            Profile
+                                        </DropdownLink>
+                                        <DropdownLink
+                                            :href="route('logout')"
+                                            method="post"
+                                            as="button"
+                                        >
+                                            Log Out
+                                        </DropdownLink>
+                                    </template>
+                                </Dropdown>
+                            </div>
+                        </div>
+
+                        <div class="-me-2 flex items-center space-x-2 sm:hidden">
+                            <ThemeToggle />
+
+                            <button
+                                @click="showingNavigationDropdown = !showingNavigationDropdown"
+                                class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:hover:bg-zinc-800 dark:hover:text-gray-300 dark:focus:bg-zinc-800 dark:focus:text-gray-300"
+                            >
+                                <svg
+                                    class="h-6 w-6"
+                                    stroke="currentColor"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        :class="{
+                                            hidden: showingNavigationDropdown,
+                                            'inline-flex': !showingNavigationDropdown,
+                                        }"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M4 6h16M4 12h16M4 18h16"
+                                    />
+                                    <path
+                                        :class="{
+                                            hidden: !showingNavigationDropdown,
+                                            'inline-flex': showingNavigationDropdown,
+                                        }"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    :class="{
+                        block: showingNavigationDropdown,
+                        hidden: !showingNavigationDropdown,
+                    }"
+                    class="sm:hidden"
+                >
+                    <div class="space-y-1 pb-3 pt-2">
+                        <ResponsiveNavLink
+                            :href="route('dashboard')"
+                            :active="route().current('dashboard')"
+                        >
+                            Dashboard
+                        </ResponsiveNavLink>
+                    </div>
+
+                    <div class="border-t border-gray-200 pb-1 pt-4 dark:border-zinc-800">
+                        <div class="px-4">
+                            <div class="text-base font-medium text-gray-800 dark:text-gray-200">
+                                {{ $page.props.auth.user.name }}
+                            </div>
+                            <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                {{ $page.props.auth.user.email }}
+                            </div>
+                        </div>
+
+                        <div class="mt-3 space-y-1">
+                            <ResponsiveNavLink :href="route('profile.edit')">
+                                Profile
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink
+                                :href="route('logout')"
+                                method="post"
+                                as="button"
+                            >
+                                Log Out
+                            </ResponsiveNavLink>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <header
+                class="bg-white shadow dark:bg-zinc-900 dark:shadow-zinc-950/50"
+                v-if="$slots.header"
+            >
+                <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                    <slot name="header" />
+                </div>
+            </header>
+
+            <main>
+                <slot />
+            </main>
+        </div>
+    </div>
+</template>
+</file>
+
+<file path="resources/js/Pages/Inventory/Index.vue">
+<script setup>
+import { ref, computed } from 'vue'
+import { Head, Link } from '@inertiajs/vue3'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
+import InventoryNavTabs from '@/Components/InventoryNavTabs.vue'
+import ImportModal from '@/Components/ImportModal.vue'
+import InventoryToolbar from './Components/InventoryToolbar.vue'
+import InventoryTable from './Components/InventoryTable.vue'
+import InventoryDetailSheet from './Components/InventoryDetailSheet.vue'
+import StockAdjustmentModal from './Components/StockAdjustmentModal.vue'
+import { Button } from '@/Components/ui/button'
+import { Download, ChevronDown } from 'lucide-vue-next'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/Components/ui/dropdown-menu'
+
+defineOptions({ layout: AdminLayout })
+
+const props = defineProps({
+  inventory: Object,
+  stats: {
+    type: Object,
+    default: () => ({ total: 0, in_stock: 0, low_stock: 0, out_of_stock: 0 }),
+  },
+  categories: { type: Array, default: () => [] },
+  brands: { type: Array, default: () => [] },
+  filters: {
+    type: Object,
+    default: () => ({ search: '', status: 'all', category: null, brand: null, sort: 'stock_asc' }),
+  },
+})
+
+const isImportModalOpen = ref(false)
+const isAdjustModalOpen = ref(false)
+const isDetailSheetOpen = ref(false)
+const adjustingVariant = ref(null)
+const inspectedVariantId = ref(null)
+const inspectedVariantFallback = ref(null)
+
+const inspectedVariant = computed(() => {
+  if (!inspectedVariantId.value) return null
+  return (
+    props.inventory?.data?.find((v) => v.id === inspectedVariantId.value) ||
+    inspectedVariantFallback.value
+  )
+})
+
+const buildExportUrl = (format) => {
+  const params = new URLSearchParams()
+  params.set('format', format)
+  if (props.filters.search) params.set('search', props.filters.search)
+  if (props.filters.status && props.filters.status !== 'all') params.set('status', props.filters.status)
+  if (props.filters.category) params.set('category', String(props.filters.category))
+  if (props.filters.brand) params.set('brand', String(props.filters.brand))
+  if (props.filters.sort && props.filters.sort !== 'stock_asc') params.set('sort', props.filters.sort)
+  return `${route('inventory.export')}?${params.toString()}`
+}
+
+const openDetailSheet = (variant) => {
+  inspectedVariantId.value = variant.id
+  inspectedVariantFallback.value = variant
+  isDetailSheetOpen.value = true
+}
+
+const openAdjustModal = (variant) => {
+  adjustingVariant.value = variant
+  isAdjustModalOpen.value = true
+}
+</script>
+
+<template>
+  <div class="w-full h-[calc(100vh-4rem)] overflow-y-auto pb-8 pr-1 space-y-4">
+    <Head title="Inventory Management" />
+
+    <div class="sticky top-0 z-20 bg-slate-50 dark:bg-zinc-950 -mt-2 pt-2 pb-1">
+      <InventoryNavTabs />
+    </div>
+
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+      <h1 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-zinc-100">
+        Inventory Stock
+      </h1>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button
+              size="sm"
+              variant="outline"
+              class="h-8 text-xs font-medium gap-1.5 border-slate-200 dark:border-zinc-800 bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 px-3 shadow-none">
+              <Download class="h-3.5 w-3.5" />
+              <span>Export</span>
+              <ChevronDown class="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-44 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
+            <DropdownMenuItem as-child class="text-xs cursor-pointer">
+              <a :href="buildExportUrl('xlsx')">Export Excel (.xlsx)</a>
+            </DropdownMenuItem>
+            <DropdownMenuItem as-child class="text-xs cursor-pointer">
+              <a :href="buildExportUrl('csv')">Export CSV (.csv)</a>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <Button
+          size="sm"
+          variant="outline"
+          @click="isImportModalOpen = true"
+          class="h-8 text-xs font-medium border-slate-200 dark:border-zinc-800 bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 px-3 shadow-none">
+          Import Excel
+        </Button>
+
+        <Button
+          size="sm"
+          as-child
+          class="h-8 text-xs font-medium bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 px-3 shadow-none">
+          <Link :href="route('products.create')">
+            Add Item Group
+          </Link>
+        </Button>
+      </div>
+    </div>
+
+    <InventoryToolbar
+      :stats="stats"
+      :categories="categories"
+      :brands="brands"
+      :filters="filters"
+    />
+
+    <InventoryTable
+      :inventory="inventory"
+      :has-active-filters="Boolean(filters.search || filters.status !== 'all' || filters.category || filters.brand)"
+      @select="openDetailSheet"
+      @adjust="openAdjustModal"
+    />
+
+    <InventoryDetailSheet
+      v-model:open="isDetailSheetOpen"
+      :variant="inspectedVariant"
+      @adjust="openAdjustModal"
+    />
+
+    <StockAdjustmentModal
+      v-model:open="isAdjustModalOpen"
+      :variant="adjustingVariant"
+    />
+
+    <ImportModal v-model:open="isImportModalOpen" />
+  </div>
+</template>
+</file>
+
+<file path="app/Http/Controllers/InventoryController.php">
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Exports\InventoryExport;
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\InventoryMovement;
+use App\Models\ProductVariant;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Maatwebsite\Excel\Excel as ExcelFormat;
+use Maatwebsite\Excel\Facades\Excel;
+
+class InventoryController extends Controller
+{
+    protected function buildFilteredQuery(Request $request): Builder
+    {
+        $search = $request->input('search');
+        $status = $request->input('status', 'all');
+        $categoryId = $request->input('category');
+        $brandId = $request->input('brand');
+        $sort = $request->input('sort', 'stock_asc');
+
+        $query = ProductVariant::with([
+            'product' => fn ($q) => $q->withTrashed()->with([
+                'category',
+                'brand',
+                'tags:id,name,color_code',
+                'media' => fn ($mq) => $mq->orderByDesc('is_primary')->orderBy('order'),
+            ]),
+            'inventoryMovements' => fn ($q) => $q->latest()->limit(10),
+        ]);
+
+        if ($status === 'archived') {
+            $query->onlyTrashed();
+        } elseif ($status === 'in_stock') {
+            $query->whereColumn('stock_qty', '>', 'low_stock_threshold');
+        } elseif ($status === 'low_stock') {
+            $query->where('stock_qty', '>', 0)
+                ->whereColumn('stock_qty', '<=', 'low_stock_threshold');
+        } elseif ($status === 'out_of_stock') {
+            $query->where('stock_qty', '<=', 0);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('sku', 'like', "%{$search}%")
+                    ->orWhere('variant_label', 'like', "%{$search}%")
+                    ->orWhereHas('product', fn ($pq) => $pq->withTrashed()->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($categoryId) {
+            $query->whereHas('product', fn ($q) => $q->withTrashed()->where('category_id', $categoryId));
+        }
+
+        if ($brandId) {
+            $query->whereHas('product', fn ($q) => $q->withTrashed()->where('brand_id', $brandId));
+        }
+
+        match ($sort) {
+            'stock_desc' => $query->orderBy('stock_qty', 'desc'),
+            'sku_asc' => $query->orderBy('sku', 'asc'),
+            'name_asc' => $query->join('products', 'product_variants.product_id', '=', 'products.id')
+                ->orderBy('products.name', 'asc')
+                ->select('product_variants.*'),
+            default => $query->orderBy('stock_qty', 'asc'),
+        };
+
+        return $query;
+    }
+
+    public function index(Request $request)
+    {
+        $inventory = $this->buildFilteredQuery($request)
+            ->paginate(15)
+            ->withQueryString();
+
+        $stats = [
+            'total' => ProductVariant::count(),
+            'in_stock' => ProductVariant::whereColumn('stock_qty', '>', 'low_stock_threshold')->count(),
+            'low_stock' => ProductVariant::where('stock_qty', '>', 0)
+                ->whereColumn('stock_qty', '<=', 'low_stock_threshold')
+                ->count(),
+            'out_of_stock' => ProductVariant::where('stock_qty', '<=', 0)->count(),
+            'archived' => ProductVariant::onlyTrashed()->count(),
+        ];
+
+        return Inertia::render('Inventory/Index', [
+            'inventory' => $inventory,
+            'stats' => $stats,
+            'categories' => Category::orderBy('name')->get(['id', 'name']),
+            'brands' => Brand::orderBy('name')->get(['id', 'name']),
+            'filters' => [
+                'search' => $request->input('search') ?? '',
+                'status' => $request->input('status', 'all'),
+                'category' => $request->input('category') ? (int) $request->input('category') : null,
+                'brand' => $request->input('brand') ? (int) $request->input('brand') : null,
+                'sort' => $request->input('sort', 'stock_asc'),
+            ],
+        ]);
+    }
+
+    public function export(Request $request)
+    {
+        $format = $request->input('format', 'xlsx') === 'csv' ? 'csv' : 'xlsx';
+        $writerType = $format === 'csv' ? ExcelFormat::CSV : ExcelFormat::XLSX;
+        $filename = 'greatbuy-inventory-' . now()->format('Y-m-d-His') . '.' . $format;
+
+        return Excel::download(
+            new InventoryExport($this->buildFilteredQuery($request)),
+            $filename,
+            $writerType
+        );
+    }
+
+    public function adjust(Request $request)
+    {
+        $validated = $request->validate([
+            'variant_id' => 'required|exists:product_variants,id',
+            'quantity' => 'required|integer|min:1',
+            'type' => 'required|in:in,out',
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            $variant = ProductVariant::lockForUpdate()->findOrFail($validated['variant_id']);
+
+            if ($validated['type'] === 'out' && $variant->stock_qty < $validated['quantity']) {
+                throw ValidationException::withMessages([
+                    'quantity' => 'Insufficient stock quantity for this adjustment.',
+                ]);
+            }
+
+            InventoryMovement::create([
+                'variant_id' => $variant->id,
+                'user_id' => auth()->id(),
+                'quantity' => $validated['quantity'],
+                'type' => $validated['type'],
+                'reason' => $validated['reason'],
+            ]);
+
+            if ($validated['type'] === 'in') {
+                $variant->increment('stock_qty', $validated['quantity']);
+            } else {
+                $variant->decrement('stock_qty', $validated['quantity']);
+            }
+
+            $variant->refresh();
+            $variant->syncStockAlert();
+        });
+
+        return back()->with('success', 'Inventory adjusted successfully.');
+    }
+}
+</file>
+
+<file path="resources/js/Layouts/AdminLayout.vue">
+<script setup>
+import { ref, computed } from 'vue'
+import { Link, usePage } from '@inertiajs/vue3'
+import Logo from '@/Components/Logo.vue'
+import RecentActivities from '@/Components/RecentActivities.vue'
+import GlobalSearch from '@/Components/GlobalSearch.vue'
+import NotificationDropdown from '@/Components/NotificationDropdown.vue'
+import UserMenu from '@/Components/UserMenu.vue'
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarTrigger,
+  SidebarInset
+} from '@/Components/ui/sidebar'
+import {
+  LayoutDashboard,
+  Package,
+  Bell,
+  MessageSquare,
+  Megaphone,
+  ChevronDown
+} from 'lucide-vue-next'
+
+const page = usePage()
+const openMenus = ref({
+  Inventory: true,
+})
+
+const toggleMenu = (name) => {
+  openMenus.value[name] = !openMenus.value[name]
+}
+
+const adminBadges = computed(() => page.props.admin_badges || { unresolved_alerts: 0, new_inquiries: 0 })
+
+const navGroups = [
+  {
+    label: 'Management',
+    items: [
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      {
+        name: 'Inventory',
+        href: '/inventory',
+        icon: Package,
+        children: [
+          { name: 'Stock Inventory', href: '/inventory' },
+          { name: 'Movement Logs', href: '/inventory/movements' },
+          { name: 'Categories', href: '/categories' },
+          { name: 'Brands', href: '/brands' },
+          { name: 'Tags', href: '/tags' },
+        ],
+      },
+      { name: 'Alerts', href: '/inventory/alerts', icon: Bell, badgeKey: 'unresolved_alerts' },
+      { name: 'Inquiries', href: '/inquiries', icon: MessageSquare, badgeKey: 'new_inquiries' },
+      { name: 'Announcements', href: '/announcements', icon: Megaphone },
+    ]
+  }
+]
+
+const getCurrentPath = () => page.url.split('?')[0]
+
+const isChildActive = (child) => {
+  const currentPath = getCurrentPath()
+
+  if (child.href === '/inventory') {
+    return currentPath === '/inventory' || currentPath.startsWith('/products')
+  }
+
+  return currentPath === child.href || currentPath.startsWith(`${child.href}/`)
+}
+
+const isItemActive = (item) => {
+  const currentPath = getCurrentPath()
+
+  if (item.children) {
+    return item.children.some((child) => isChildActive(child))
+  }
+
+  return currentPath === item.href || currentPath.startsWith(`${item.href}/`)
+}
+</script>
+
+<template>
+  <SidebarProvider>
+    <div
+      class="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 transition-colors duration-200">
+      <Sidebar class="border-r border-slate-200 dark:border-zinc-800 dark:bg-zinc-900">
+        <div class="flex h-14 items-center px-4 shrink-0">
+          <Link href="/dashboard" class="flex items-center gap-2 transition hover:opacity-90">
+            <Logo class="h-8 w-auto" />
+          </Link>
+        </div>
+
+        <SidebarContent
+          class="dark:bg-zinc-900 px-2 py-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+          <SidebarGroup v-for="group in navGroups" :key="group.label">
+            <SidebarGroupLabel
+              class="text-slate-400 dark:text-zinc-500 font-semibold text-[11px] tracking-wider uppercase px-3 mb-2">
+              {{ group.label }}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu class="space-y-1">
+                <SidebarMenuItem v-for="item in group.items" :key="item.name">
+                  <!-- Parent Item with Collapsible Children -->
+                  <template v-if="item.children">
+                    <SidebarMenuButton
+                      as-child
+                      :is-active="isItemActive(item)"
+                      class="transition-all duration-150 rounded-md"
+                      :class="[
+                        isItemActive(item)
+                          ? 'text-slate-900 dark:text-zinc-100 font-semibold hover:!bg-slate-100 dark:hover:!bg-zinc-800/60'
+                          : 'text-slate-600 hover:!bg-slate-100 hover:!text-slate-900 dark:text-zinc-400 dark:hover:!bg-zinc-800/60 dark:hover:!text-zinc-100'
+                      ]">
+                      <div class="flex items-center justify-between w-full px-3 py-2 text-[13px] font-medium tracking-tight">
+                        <Link
+                          :href="item.href"
+                          @click="openMenus[item.name] = true"
+                          class="flex flex-1 items-center gap-3 min-w-0">
+                          <component
+                            :is="item.icon"
+                            class="h-4 w-4 shrink-0 transition-colors"
+                            :class="[
+                              isItemActive(item)
+                                ? 'text-slate-900 dark:text-zinc-100'
+                                : 'text-slate-400 dark:text-zinc-500'
+                            ]" />
+                          <span class="truncate">{{ item.name }}</span>
+                        </Link>
+
+                        <button
+                          type="button"
+                          @click.stop="toggleMenu(item.name)"
+                          :aria-expanded="Boolean(openMenus[item.name])"
+                          :aria-label="`Toggle ${item.name} submenu`"
+                          class="p-0.5 rounded text-slate-400 hover:text-slate-700 dark:text-zinc-500 dark:hover:text-zinc-200 transition-colors">
+                          <ChevronDown
+                            class="h-3.5 w-3.5 transition-transform duration-150"
+                            :class="openMenus[item.name] ? 'rotate-0' : '-rotate-90'" />
+                        </button>
+                      </div>
+                    </SidebarMenuButton>
+
+                    <div
+                      v-show="openMenus[item.name]"
+                      class="ml-5 mt-1 pl-2.5 border-l border-slate-200 dark:border-zinc-800 space-y-0.5">
+                      <Link
+                        v-for="child in item.children"
+                        :key="child.name"
+                        :href="child.href"
+                        class="flex items-center rounded-md px-2.5 py-1.5 text-[12.5px] tracking-tight transition-colors"
+                        :class="[
+                          isChildActive(child)
+                            ? 'bg-slate-200/90 text-slate-900 dark:bg-zinc-800 dark:text-zinc-100 font-semibold'
+                            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 font-medium'
+                        ]">
+                        {{ child.name }}
+                      </Link>
+                    </div>
+                  </template>
+
+                  <SidebarMenuButton
+                    v-else
+                    as-child
+                    :is-active="isItemActive(item)"
+                    class="transition-all duration-150 rounded-md"
+                    :class="[
+                      isItemActive(item)
+                        ? '!bg-slate-200 !text-slate-900 dark:!bg-zinc-800 dark:!text-zinc-100 font-semibold'
+                        : 'text-slate-600 hover:!bg-slate-100 hover:!text-slate-900 dark:text-zinc-400 dark:hover:!bg-zinc-800/60 dark:hover:!text-zinc-100'
+                    ]">
+                  <Link
+                      :href="item.href"
+                      class="flex items-center justify-between gap-2 px-3 py-2 text-[13px] font-medium tracking-tight">
+                      <span class="flex items-center gap-3 min-w-0">
+                        <component
+                          :is="item.icon"
+                          class="h-4 w-4 shrink-0 transition-colors"
+                          :class="[
+                            isItemActive(item)
+                              ? '!text-slate-900 dark:!text-zinc-100'
+                              : 'text-slate-400 dark:text-zinc-500 group-hover:text-slate-700 dark:group-hover:text-zinc-200'
+                          ]" />
+                        <span class="truncate">{{ item.name }}</span>
+                      </span>
+
+                      <span
+                        v-if="item.badgeKey && adminBadges[item.badgeKey] > 0"
+                        class="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 dark:bg-zinc-800 dark:text-zinc-200">
+                        {{ adminBadges[item.badgeKey] > 99 ? '99+' : adminBadges[item.badgeKey] }}
+                      </span>
+                  </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
+
+      <SidebarInset class="flex flex-col flex-1 h-screen overflow-hidden dark:bg-zinc-950">
+        <header
+          class="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-6 relative z-50">
+
+          <div class="flex items-center gap-3">
+            <SidebarTrigger />
+            <RecentActivities />
+            <GlobalSearch />
+          </div>
+
+          <div class="flex items-center gap-2 sm:gap-3">
+            <NotificationDropdown />
+            <UserMenu />
+          </div>
+        </header>
+
+        <main
+          class="flex-1 overflow-y-auto p-6 md:p-8 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+          <slot />
+        </main>
+      </SidebarInset>
+    </div>
+  </SidebarProvider>
+</template>
+</file>
+
+</files>

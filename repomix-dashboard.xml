@@ -1,0 +1,750 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: resources/js/Pages/Admin/Dashboard.vue, resources/js/Components/Dashboard/**, app/Http/Controllers/*Dashboard*
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+resources/
+  js/
+    Components/
+      Dashboard/
+        unused-safe/
+          ActiveNoticesCard.vue
+          DashboardHeader.vue
+          InventoryValueCard.vue
+          LowStockCard.vue
+          TotalVariantsCard.vue
+        RecentMovementsList.vue
+        TopAllocatedStock.vue
+        UrgentAlertsTable.vue
+    Pages/
+      Admin/
+        Dashboard.vue
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="resources/js/Components/Dashboard/unused-safe/ActiveNoticesCard.vue">
+<script setup>
+import { Link } from '@inertiajs/vue3'
+
+defineProps({
+  notices: { type: Array, default: () => [] },
+})
+</script>
+
+<template>
+  <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-200/80 dark:border-zinc-800 flex items-center justify-between">
+      <h2 class="text-xs font-medium text-slate-700 dark:text-zinc-300">Active Notices</h2>
+      <Link
+        href="/announcements"
+        class="text-xs text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
+        Manage →
+      </Link>
+    </div>
+
+    <div class="divide-y divide-slate-100 dark:divide-zinc-800/60">
+      <div v-for="notice in notices" :key="notice.id" class="px-4 py-2.5 space-y-0.5">
+        <div class="text-xs font-medium text-slate-900 dark:text-zinc-100 truncate">
+          {{ notice.title }}
+        </div>
+        <p class="text-xs text-slate-500 dark:text-zinc-400 line-clamp-2">
+          {{ notice.content || notice.created_at }}
+        </p>
+      </div>
+
+      <div v-if="notices.length === 0" class="py-8 text-center text-xs text-slate-400 dark:text-zinc-500">
+        No active notices.
+      </div>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Components/Dashboard/unused-safe/DashboardHeader.vue">
+<script setup>
+import { Link } from '@inertiajs/vue3'
+import { Button } from '@/Components/ui/button'
+</script>
+
+<template>
+    <div
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-3 border-b border-slate-200/80 dark:border-zinc-800">
+        <h1 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-zinc-100">Dashboard</h1>
+
+        <div class="flex items-center gap-2.5">
+            <Button size="sm" as-child
+                class="text-xs font-medium bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 px-3.5">
+                <Link href="/inventory">+ Update Stock</Link>
+            </Button>
+
+            <Button size="sm" variant="outline" as-child
+                class="text-xs font-medium border-slate-200 dark:border-zinc-800 bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800/80 text-slate-700 dark:text-zinc-300 px-3.5">
+                <Link href="/announcements">Announcements</Link>
+            </Button>
+        </div>
+    </div>
+</template>
+</file>
+
+<file path="resources/js/Components/Dashboard/unused-safe/InventoryValueCard.vue">
+<script setup>
+import { computed } from 'vue'
+
+const props = defineProps({
+    totalValue: { type: Number, default: 0 },
+    topItems: { type: Array, default: () => [] }
+})
+
+const PHP_TO_CAD_RATE = 0.0241
+
+const formattedPhpValue = computed(() => {
+    return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(props.totalValue)
+})
+
+const formattedCadValue = computed(() => {
+    const cadAmount = props.totalValue * PHP_TO_CAD_RATE
+    return 'CAD $' + new Intl.NumberFormat('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cadAmount)
+})
+</script>
+
+<template>
+    <div
+        class="p-5 bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 flex flex-col justify-between min-h-[280px]">
+        <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800/80">
+                <span class="text-xs font-medium text-slate-500 dark:text-zinc-400">Inventory Value</span>
+                <span class="text-xs font-normal font-mono text-slate-400 dark:text-zinc-500">{{ formattedCadValue
+                    }}</span>
+            </div>
+
+            <div class="mt-3 pb-3 border-b border-slate-100 dark:border-zinc-800/60">
+                <div class="text-xl font-semibold text-slate-900 dark:text-zinc-100 tracking-tight">
+                    {{ formattedPhpValue }}
+                </div>
+            </div>
+
+            <div class="mt-3 h-32 overflow-y-auto pr-1 space-y-2">
+                <p class="text-[11px] font-medium text-slate-400 dark:text-zinc-500">
+                    Top Stock Allocations
+                </p>
+                <div v-for="item in topItems" :key="item.id"
+                    class="flex items-center justify-between text-xs py-1 border-b border-slate-50 dark:border-zinc-800/30 last:border-0">
+                    <span class="truncate pr-2 text-slate-600 dark:text-zinc-300 font-normal">
+                        {{ item.product?.name || item.sku }}
+                    </span>
+                    <span class="font-mono text-slate-800 dark:text-zinc-200 font-medium flex-shrink-0">
+                        {{ item.stock_qty }} units
+                    </span>
+                </div>
+
+                <div v-if="topItems.length === 0" class="text-xs text-slate-400 dark:text-zinc-500 py-4 text-center">
+                    No active inventory logged.
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+</file>
+
+<file path="resources/js/Components/Dashboard/unused-safe/LowStockCard.vue">
+<script setup>
+import { computed } from 'vue'
+import { Link } from '@inertiajs/vue3'
+import { Button } from '@/Components/ui/button'
+
+const props = defineProps({
+    count: { type: Number, default: 0 },
+    alerts: { type: Array, default: () => [] }
+})
+
+const activeAlerts = computed(() => props.alerts.filter(a => !a.is_resolved))
+</script>
+
+<template>
+    <div
+        class="p-5 bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 flex flex-col justify-between min-h-[280px]">
+        <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800/80">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-medium text-slate-500 dark:text-zinc-400">Low Stock</span>
+                    <span
+                        class="text-xs font-medium text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md font-mono">
+                        {{ count }}
+                    </span>
+                </div>
+                <Link href="/inventory/alerts"
+                    class="text-xs font-normal text-rose-600 dark:text-rose-400 hover:underline">
+                    View all →
+                </Link>
+            </div>
+
+            <div class="mt-3 h-52 overflow-y-auto pr-1 space-y-2.5 divide-y divide-slate-100 dark:divide-zinc-800/50">
+                <div v-for="alert in activeAlerts" :key="alert.id"
+                    class="flex items-center justify-between pt-2.5 first:pt-0">
+                    <div class="min-w-0 pr-3">
+                        <p class="text-xs font-medium text-slate-800 dark:text-zinc-200 truncate">
+                            {{ alert.product_variant?.product?.name || 'Deleted Product' }}
+                        </p>
+                        <p class="text-[11px] font-mono font-normal text-slate-400 dark:text-zinc-500 truncate mt-0.5">
+                            SKU: {{ alert.product_variant?.sku }}
+                        </p>
+                    </div>
+
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <span class="font-mono font-medium text-rose-600 dark:text-rose-400 text-xs">
+                            {{ alert.product_variant?.stock_qty ?? 0 }} left
+                        </span>
+                        <Button size="xs" as-child variant="outline"
+                            class="h-6 text-[11px] font-medium border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/60 px-2">
+                            <Link href="/inventory">Restock</Link>
+                        </Button>
+                    </div>
+                </div>
+
+                <div v-if="activeAlerts.length === 0"
+                    class="flex flex-col items-center justify-center h-40 text-center space-y-1">
+                    <span class="text-xs font-medium text-emerald-600 dark:text-emerald-400">All levels optimal</span>
+                    <span class="text-[11px] font-normal text-slate-400 dark:text-zinc-500">No low stock thresholds
+                        breached</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+</file>
+
+<file path="resources/js/Components/Dashboard/unused-safe/TotalVariantsCard.vue">
+<script setup>
+import { Link } from '@inertiajs/vue3'
+
+defineProps({
+    count: { type: Number, default: 0 },
+    variants: { type: Array, default: () => [] }
+})
+</script>
+
+<template>
+    <div
+        class="p-5 bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 flex flex-col justify-between min-h-[280px]">
+        <div>
+            <!-- Header -->
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800/80">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-medium text-slate-500 dark:text-zinc-400">Total Variants</span>
+                    <span
+                        class="text-xs font-medium text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md font-mono">
+                        {{ count }}
+                    </span>
+                </div>
+                <Link href="/inventory"
+                    class="text-xs font-normal text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors">
+                    View all →
+                </Link>
+            </div>
+
+            <!-- Item List -->
+            <div class="mt-3 h-52 overflow-y-auto pr-1 space-y-2.5 divide-y divide-slate-100 dark:divide-zinc-800/50">
+                <div v-for="item in variants" :key="item.id" class="flex items-center justify-between pt-2 first:pt-0">
+                    <div class="min-w-0 pr-3">
+                        <p class="text-xs font-medium text-slate-800 dark:text-zinc-200 truncate">
+                            {{ item.product?.name || item.sku }}
+                        </p>
+                        <p class="text-[11px] font-mono text-slate-400 dark:text-zinc-500 truncate mt-0.5">
+                            {{ item.sku }} <span v-if="item.variant_label">({{ item.variant_label }})</span>
+                        </p>
+                    </div>
+                    <span
+                        class="text-xs font-mono font-normal text-slate-600 dark:text-zinc-400 bg-slate-50 dark:bg-zinc-800/60 px-2 py-0.5 rounded flex-shrink-0">
+                        {{ item.stock_qty }} units
+                    </span>
+                </div>
+
+                <div v-if="variants.length === 0"
+                    class="flex items-center justify-center h-full text-xs text-slate-400 dark:text-zinc-500">
+                    No active variants found.
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+</file>
+
+<file path="resources/js/Components/Dashboard/RecentMovementsList.vue">
+<script setup>
+import { Link } from '@inertiajs/vue3'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table'
+
+defineProps({
+  movements: { type: Array, default: () => [] },
+})
+
+const formatTime = (dateStr) => {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+</script>
+
+<template>
+  <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-200/80 dark:border-zinc-800 flex items-center justify-between">
+      <h2 class="text-xs font-medium text-slate-700 dark:text-zinc-300">Recent Stock Activity</h2>
+      <Link
+        :href="route('inventory.movements.index')"
+        class="text-[11px] font-medium text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
+        View all →
+      </Link>
+    </div>
+
+    <div class="overflow-x-auto">
+      <Table>
+        <TableHeader class="bg-slate-50/50 dark:bg-zinc-900/50">
+          <TableRow class="border-b border-slate-200/80 dark:border-zinc-800 hover:bg-transparent">
+            <TableHead class="px-4 h-9 text-xs font-medium text-slate-500 dark:text-zinc-400">Item</TableHead>
+            <TableHead class="px-4 h-9 text-xs font-medium text-slate-500 dark:text-zinc-400">Reason / By</TableHead>
+            <TableHead class="px-4 h-9 text-xs font-medium text-slate-500 dark:text-zinc-400">Time</TableHead>
+            <TableHead class="px-4 h-9 text-right text-xs font-medium text-slate-500 dark:text-zinc-400">Change</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow
+            v-for="move in movements"
+            :key="move.id"
+            class="border-b border-slate-100 dark:border-zinc-800/60 hover:bg-slate-50/60 dark:hover:bg-zinc-800/40 transition-colors">
+            <TableCell class="px-4 py-2.5">
+              <div class="text-xs font-medium text-slate-900 dark:text-zinc-100">
+                {{ move.variant?.product?.name || 'Item' }}
+              </div>
+              <div class="text-[11px] font-mono text-slate-500 dark:text-zinc-400">
+                {{ move.variant?.sku }}
+              </div>
+            </TableCell>
+
+            <TableCell class="px-4 py-2.5 text-xs text-slate-600 dark:text-zinc-400">
+              <div>{{ move.reason || (move.type === 'in' ? 'Stock In' : 'Stock Out') }}</div>
+              <div v-if="move.user?.name" class="text-[11px] text-slate-400 dark:text-zinc-500">
+                {{ move.user.name }}
+              </div>
+            </TableCell>
+
+            <TableCell class="px-4 py-2.5 text-xs text-slate-500 dark:text-zinc-400 whitespace-nowrap">
+              {{ formatTime(move.created_at) }}
+            </TableCell>
+
+            <TableCell
+              class="px-4 py-2.5 text-right font-mono text-xs font-medium"
+              :class="
+                move.type === 'in'
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-rose-600 dark:text-rose-400'
+              ">
+              {{ move.type === 'in' ? '+' : '-' }}{{ move.quantity }}
+            </TableCell>
+          </TableRow>
+
+          <TableRow v-if="movements.length === 0">
+            <TableCell colspan="4" class="h-24 text-center text-xs text-slate-400 dark:text-zinc-500">
+              No recent stock movements recorded.
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Components/Dashboard/TopAllocatedStock.vue">
+<script setup>
+defineProps({
+  items: { type: Array, default: () => [] },
+})
+</script>
+
+<template>
+  <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-200/80 dark:border-zinc-800 flex items-center justify-between">
+      <h2 class="text-xs font-medium text-slate-700 dark:text-zinc-300">Top Stocked Items</h2>
+      <span class="text-[11px] text-slate-400 dark:text-zinc-500">Qty</span>
+    </div>
+
+    <div class="divide-y divide-slate-100 dark:divide-zinc-800/60">
+      <div
+        v-for="item in items"
+        :key="item.id"
+        class="px-4 py-2.5 flex items-center justify-between gap-3">
+        <div class="min-w-0 flex-1">
+          <div class="text-xs font-medium text-slate-900 dark:text-zinc-100 truncate">
+            {{ item.product?.name || 'Unknown Product' }}
+          </div>
+          <div class="text-[11px] font-mono text-slate-500 dark:text-zinc-400 truncate">
+            {{ item.sku }}<span v-if="item.variant_label"> · {{ item.variant_label }}</span>
+          </div>
+        </div>
+
+        <span class="text-xs font-mono font-medium text-slate-700 dark:text-zinc-300 shrink-0">
+          {{ item.stock_qty }} units
+        </span>
+      </div>
+
+      <div v-if="items.length === 0" class="py-8 text-center text-xs text-slate-400 dark:text-zinc-500">
+        No stock recorded yet.
+      </div>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Components/Dashboard/UrgentAlertsTable.vue">
+<script setup>
+import { Link } from '@inertiajs/vue3'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table'
+
+defineProps({
+  alerts: { type: Array, default: () => [] },
+})
+
+const emit = defineEmits(['restock'])
+</script>
+
+<template>
+  <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-200/80 dark:border-zinc-800 flex items-center justify-between">
+      <h2 class="text-xs font-medium text-slate-700 dark:text-zinc-300">Attention Required</h2>
+      <Link
+        :href="route('inventory.index', { status: 'low_stock' })"
+        class="text-xs text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
+        View low stock →
+      </Link>
+    </div>
+
+    <div class="overflow-x-auto">
+      <Table>
+        <TableHeader class="bg-slate-50/50 dark:bg-zinc-900/50">
+          <TableRow class="border-b border-slate-200/80 dark:border-zinc-800 hover:bg-transparent">
+            <TableHead class="px-4 h-9 text-xs font-medium text-slate-500 dark:text-zinc-400">Item / SKU</TableHead>
+            <TableHead class="px-4 h-9 text-xs font-medium text-slate-500 dark:text-zinc-400">Status</TableHead>
+            <TableHead class="px-4 h-9 text-xs font-medium text-slate-500 dark:text-zinc-400">On Hand</TableHead>
+            <TableHead class="px-4 h-9 text-right text-xs font-medium text-slate-500 dark:text-zinc-400">Action</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow
+            v-for="alert in alerts"
+            :key="alert.id"
+            class="border-b border-slate-100 dark:border-zinc-800/60 hover:bg-slate-50/60 dark:hover:bg-zinc-800/40 transition-colors">
+            <TableCell class="px-4 py-2.5">
+              <div class="text-xs font-medium text-slate-900 dark:text-zinc-100">
+                {{ alert.product_variant?.product?.name || 'Deleted Product' }}
+              </div>
+              <div class="text-[11px] font-mono text-slate-500 dark:text-zinc-400">
+                {{ alert.product_variant?.sku }}
+                <span v-if="alert.product_variant?.variant_label">
+                  · {{ alert.product_variant.variant_label }}
+                </span>
+              </div>
+            </TableCell>
+
+            <TableCell class="px-4 py-2.5">
+              <span
+                class="text-xs font-medium"
+                :class="
+                  (alert.product_variant?.stock_qty ?? 0) <= 0
+                    ? 'text-rose-600 dark:text-rose-400'
+                    : 'text-amber-600 dark:text-amber-400'
+                ">
+                {{ (alert.product_variant?.stock_qty ?? 0) <= 0 ? 'Out of Stock' : 'Low Stock' }}
+              </span>
+            </TableCell>
+
+            <TableCell class="px-4 py-2.5 font-mono text-xs text-slate-700 dark:text-zinc-300">
+              {{ alert.product_variant?.stock_qty ?? 0 }}
+              <span class="text-slate-400 dark:text-zinc-500">/ {{ alert.threshold_reached }} min</span>
+            </TableCell>
+
+            <TableCell class="px-4 py-2.5 text-right">
+              <button
+                v-if="alert.product_variant"
+                type="button"
+                @click="emit('restock', alert.product_variant)"
+                class="text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
+                Restock
+              </button>
+              <span v-else class="text-xs text-slate-400 dark:text-zinc-500">—</span>
+            </TableCell>
+          </TableRow>
+
+          <TableRow v-if="alerts.length === 0">
+            <TableCell colspan="4" class="h-24 text-center text-xs text-slate-400 dark:text-zinc-500">
+              All stock levels are healthy.
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Pages/Admin/Dashboard.vue">
+<script setup>
+import { ref } from 'vue'
+import { Head, Link } from '@inertiajs/vue3'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
+import UrgentAlertsTable from '@/Components/Dashboard/UrgentAlertsTable.vue'
+import RecentMovementsList from '@/Components/Dashboard/RecentMovementsList.vue'
+import TopAllocatedStock from '@/Components/Dashboard/TopAllocatedStock.vue'
+import StockAdjustmentModal from '@/Pages/Inventory/Components/StockAdjustmentModal.vue'
+
+defineProps({
+  stats: {
+    type: Object,
+    default: () => ({
+      totalItems: 0,
+      outOfStockCount: 0,
+      lowStockCount: 0,
+      newInquiriesCount: 0,
+      activeAnnouncements: 0,
+      totalValue: 0,
+    }),
+  },
+  recentAlerts: { type: Array, default: () => [] },
+  recentMovements: { type: Array, default: () => [] },
+  topStockedItems: { type: Array, default: () => [] },
+  activeAnnouncementsList: { type: Array, default: () => [] },
+  recentInquiries: { type: Array, default: () => [] },
+})
+
+const isAdjustModalOpen = ref(false)
+const selectedVariant = ref(null)
+
+const openRestockModal = (variant) => {
+  if (!variant) return
+  selectedVariant.value = variant
+  isAdjustModalOpen.value = true
+}
+
+const formatCurrency = (val) =>
+  new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(val || 0))
+</script>
+
+<template>
+  <Head title="Dashboard" />
+
+  <AdminLayout>
+    <div class="w-full h-[calc(100vh-4rem)] overflow-y-auto pb-8 pr-1 space-y-5">
+      <div class="flex items-center justify-between pt-1">
+        <h1 class="text-xl font-semibold tracking-tight text-slate-900 dark:text-zinc-100">
+          Dashboard
+        </h1>
+
+        <Link
+          :href="route('products.create')"
+          class="text-xs font-medium text-slate-700 hover:text-slate-950 dark:text-zinc-300 dark:hover:text-white transition-colors">
+          + Add Item Group
+        </Link>
+      </div>
+
+      <div
+        class="grid grid-cols-2 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/80 dark:divide-zinc-800 bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-xl overflow-hidden">
+        <Link
+          :href="route('inventory.index', { status: 'out_of_stock' })"
+          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>Out of Stock</span>
+            <span>→</span>
+          </div>
+          <div
+            :class="[
+              'mt-1 font-mono text-lg font-semibold',
+              (stats.outOfStockCount ?? 0) > 0
+                ? 'text-rose-600 dark:text-rose-400'
+                : 'text-slate-900 dark:text-zinc-100',
+            ]">
+            {{ stats.outOfStockCount ?? 0 }}
+          </div>
+        </Link>
+
+        <Link
+          :href="route('inventory.index', { status: 'low_stock' })"
+          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>Low Stock</span>
+            <span>→</span>
+          </div>
+          <div
+            :class="[
+              'mt-1 font-mono text-lg font-semibold',
+              stats.lowStockCount > 0
+                ? 'text-amber-600 dark:text-amber-400'
+                : 'text-slate-900 dark:text-zinc-100',
+            ]">
+            {{ stats.lowStockCount }}
+          </div>
+        </Link>
+
+        <Link
+          :href="route('inquiries.index', { status: 'new' })"
+          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>New Inquiries</span>
+            <span>→</span>
+          </div>
+          <div
+            :class="[
+              'mt-1 font-mono text-lg font-semibold',
+              (stats.newInquiriesCount ?? 0) > 0
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-slate-900 dark:text-zinc-100',
+            ]">
+            {{ stats.newInquiriesCount ?? 0 }}
+          </div>
+        </Link>
+
+        <Link
+          :href="route('inventory.index')"
+          class="px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors block">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
+            <span>Total SKUs</span>
+            <span>→</span>
+          </div>
+          <div class="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-zinc-100">
+            {{ stats.totalItems }}
+          </div>
+        </Link>
+
+        <div class="px-4 py-3.5 col-span-2 lg:col-span-1">
+          <div class="text-xs text-slate-500 dark:text-zinc-400">Stock Valuation</div>
+          <div class="mt-1 font-mono text-lg font-semibold text-slate-900 dark:text-zinc-100">
+            {{ formatCurrency(stats.totalValue) }}
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-5 lg:grid-cols-3 items-start">
+        <div class="lg:col-span-2 space-y-5">
+          <UrgentAlertsTable :alerts="recentAlerts" @restock="openRestockModal" />
+          <RecentMovementsList :movements="recentMovements" />
+        </div>
+
+        <div class="space-y-5">
+          <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200/80 dark:border-zinc-800 flex items-center justify-between">
+              <h2 class="text-xs font-medium text-slate-700 dark:text-zinc-300">Open Inquiries</h2>
+              <Link
+                :href="route('inquiries.index')"
+                class="text-[11px] font-medium text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
+                View all →
+              </Link>
+            </div>
+
+            <div class="divide-y divide-slate-100 dark:divide-zinc-800/60">
+              <Link
+                v-for="inq in recentInquiries"
+                :key="inq.id"
+                :href="route('inquiries.index', { status: inq.status })"
+                class="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-slate-50/70 dark:hover:bg-zinc-800/40 transition-colors">
+                <div class="min-w-0">
+                  <div class="text-xs font-medium text-slate-900 dark:text-zinc-100 truncate">
+                    {{ inq.customer_name }}
+                  </div>
+                  <div class="text-[11px] text-slate-500 dark:text-zinc-400 truncate">
+                    {{ inq.product?.name ?? 'Product' }}
+                    <span v-if="inq.variant"> · {{ inq.variant.variant_label }}</span>
+                    <span class="font-mono"> (×{{ inq.quantity }})</span>
+                  </div>
+                </div>
+
+                <span
+                  :class="[
+                    'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium',
+                    inq.status === 'new'
+                      ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400'
+                      : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400',
+                  ]">
+                  {{ inq.status === 'new' ? 'New' : 'Contacted' }}
+                </span>
+              </Link>
+
+              <div v-if="recentInquiries.length === 0" class="py-8 text-center text-xs text-slate-400 dark:text-zinc-500">
+                No open inquiries.
+              </div>
+            </div>
+          </div>
+
+          <TopAllocatedStock :items="topStockedItems" />
+
+          <div class="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/80 dark:border-zinc-800 overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-200/80 dark:border-zinc-800 flex items-center justify-between">
+              <h2 class="text-xs font-medium text-slate-700 dark:text-zinc-300">Active Notices</h2>
+              <span class="font-mono text-[11px] text-slate-400 dark:text-zinc-500">
+                {{ stats.activeAnnouncements }}
+              </span>
+            </div>
+
+            <div class="divide-y divide-slate-100 dark:divide-zinc-800/60">
+              <div v-for="notice in activeAnnouncementsList" :key="notice.id" class="px-4 py-2.5">
+                <p class="text-xs text-slate-700 dark:text-zinc-300 leading-relaxed">
+                  {{ notice.content }}
+                </p>
+              </div>
+
+              <div v-if="activeAnnouncementsList.length === 0" class="py-8 text-center text-xs text-slate-400 dark:text-zinc-500">
+                No active notices.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <StockAdjustmentModal v-model:open="isAdjustModalOpen" :variant="selectedVariant" />
+    </div>
+  </AdminLayout>
+</template>
+</file>
+
+</files>
