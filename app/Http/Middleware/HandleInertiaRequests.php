@@ -40,18 +40,30 @@ class HandleInertiaRequests extends Middleware
             'recent_activities' => fn () => $request->user()?->isAdmin()
                 ? InventoryMovement::with(['variant.product', 'user'])
                     ->latest()
-                    ->take(10)
+                    ->take(15)
                     ->get()
                     ->map(function ($movement) {
-                        $productName = $movement->variant?->product?->name ?? 'Item';
-                        $variantLabel = $movement->variant?->variant_label ? " ({$movement->variant->variant_label})" : '';
+                        $product = $movement->variant?->product;
+                        $productName = $product?->name ?? 'Item';
+                        $variantLabel = $movement->variant?->variant_label;
+                        $sku = $movement->variant?->sku;
                         $action = $movement->type === 'in' ? 'Added' : 'Removed';
+                        $suffix = $variantLabel ? " ({$variantLabel})" : '';
 
                         return [
                             'id' => $movement->id,
-                            'description' => "{$action} {$movement->quantity} unit(s) of {$productName}{$variantLabel}",
+                            'type' => $movement->type,
+                            'quantity' => $movement->quantity,
+                            'product_name' => $productName,
+                            'variant_label' => $variantLabel,
+                            'sku' => $sku,
+                            'reason' => $movement->reason,
+                            'description' => "{$action} {$movement->quantity} unit(s) of {$productName}{$suffix}",
                             'user_name' => $movement->user?->name ?? 'System',
                             'created_at_human' => $movement->created_at?->diffForHumans() ?? 'Just now',
+                            'href' => $sku
+                                ? route('inventory.index', ['search' => $sku])
+                                : route('inventory.movements.index'),
                         ];
                     })
                 : [],
