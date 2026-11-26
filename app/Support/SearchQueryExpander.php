@@ -74,7 +74,7 @@ class SearchQueryExpander
         }
 
         return array_values(array_unique(array_filter(
-            array_map(fn ($v) => trim(preg_replace('/\s+/', ' ', $v)), $all)
+            array_map(fn($v) => trim(preg_replace('/\s+/', ' ', $v)), $all)
         )));
     }
 
@@ -85,12 +85,18 @@ class SearchQueryExpander
             return $query;
         }
 
-        return $query->where(function (Builder $outer) use ($phrases) {
+        return $query->where(function (Builder $outer) use ($phrases, $rawSearch) {
             foreach ($phrases as $phrase) {
-                // Match the full phrase across key fields
                 $outer->orWhere(function (Builder $phraseGroup) use ($phrase) {
                     self::applyPhraseOrTokens($phraseGroup, $phrase);
                 });
+            }
+
+            // Dynamic initialism match (e.g., "bbw" -> "B... & B... W...", "nb" -> "N... B...")
+            if ($acronymPattern = self::buildAcronymLikePattern($rawSearch)) {
+                $outer->orWhere('name', 'like', $acronymPattern)
+                    ->orWhereHas('brand', fn(Builder $bq) => $bq->where('name', 'like', $acronymPattern))
+                    ->orWhereHas('category', fn(Builder $cq) => $cq->where('name', 'like', $acronymPattern));
             }
         });
     }
@@ -102,7 +108,7 @@ class SearchQueryExpander
             return $query;
         }
 
-        return $query->where(function (Builder $outer) use ($phrases, $column) {
+        return $query->where(function (Builder $outer) use ($phrases, $column, $rawSearch) {
             foreach ($phrases as $phrase) {
                 $outer->orWhere($column, 'like', "%{$phrase}%");
 
@@ -115,7 +121,25 @@ class SearchQueryExpander
                     });
                 }
             }
+
+            if ($acronymPattern = self::buildAcronymLikePattern($rawSearch)) {
+                $outer->orWhere($column, 'like', $acronymPattern);
+            }
         });
+    }
+
+    private static function buildAcronymLikePattern(string $raw): ?string
+    {
+        $clean = preg_replace('/[^a-zA-Z0-9]/', '', trim($raw));
+        $len = strlen($clean);
+
+        if ($len < 2 || $len > 6 || str_contains(trim($raw), ' ')) {
+            return null;
+        }
+
+        $letters = str_split(Str::lower($clean));
+
+        return implode('% ', $letters) . '%';
     }
 
     private static function applyPhraseOrTokens(Builder $group, string $phrase): void
@@ -140,9 +164,9 @@ class SearchQueryExpander
 
         $q->where('name', 'like', $like)
             ->orWhere('description', 'like', $like)
-            ->orWhereHas('brand', fn (Builder $bq) => $bq->where('name', 'like', $like))
-            ->orWhereHas('category', fn (Builder $cq) => $cq->where('name', 'like', $like))
-            ->orWhereHas('tags', fn (Builder $tq) => $tq->where('name', 'like', $like))
+            ->orWhereHas('brand', fn(Builder $bq) => $bq->where('name', 'like', $like))
+            ->orWhereHas('category', fn(Builder $cq) => $cq->where('name', 'like', $like))
+            ->orWhereHas('tags', fn(Builder $tq) => $tq->where('name', 'like', $like))
             ->orWhereHas('variants', function (Builder $vq) use ($like) {
                 $vq->where('sku', 'like', $like)
                     ->orWhere('variant_label', 'like', $like);

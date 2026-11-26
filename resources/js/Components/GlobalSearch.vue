@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import axios from 'axios'
 import {
     Search,
@@ -19,8 +19,10 @@ const isSearchFocused = ref(false)
 const isCategoryDropdownOpen = ref(false)
 const isLoading = ref(false)
 const searchResults = ref([])
+const activeIndex = ref(-1)
 
 const containerRef = ref(null)
+const inputRef = ref(null)
 let debounceTimer = null
 
 const searchCategories = [
@@ -42,8 +44,10 @@ const selectCategory = (categoryName) => {
 }
 
 const fetchSearchResults = () => {
-    if (!searchQuery.value.trim()) {
+    const q = searchQuery.value.trim()
+    if (q.length < 2) {
         searchResults.value = []
+        activeIndex.value = -1
         return
     }
 
@@ -51,15 +55,17 @@ const fetchSearchResults = () => {
 
     axios.get('/api/search', {
         params: {
-            q: searchQuery.value,
+            q,
             category: selectedCategory.value
         }
     })
         .then(response => {
             searchResults.value = response.data
+            activeIndex.value = response.data.length > 0 ? 0 : -1
         })
         .catch(() => {
             searchResults.value = []
+            activeIndex.value = -1
         })
         .finally(() => {
             isLoading.value = false
@@ -70,8 +76,51 @@ watch(searchQuery, () => {
     clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
         fetchSearchResults()
-    }, 300)
+    }, 220)
 })
+
+const handleKeydown = (event) => {
+    if (!isSearchFocused.value || searchResults.value.length === 0) {
+        if (event.key === 'Escape') {
+            isSearchFocused.value = false
+            inputRef.value?.blur()
+        }
+        return
+    }
+
+    if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        activeIndex.value = (activeIndex.value + 1) % searchResults.value.length
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        activeIndex.value = (activeIndex.value - 1 + searchResults.value.length) % searchResults.value.length
+    } else if (event.key === 'Enter' && activeIndex.value >= 0) {
+        event.preventDefault()
+        const selected = searchResults.value[activeIndex.value]
+        if (selected?.href) {
+            isSearchFocused.value = false
+            router.visit(selected.href)
+        }
+    } else if (event.key === 'Escape') {
+        isSearchFocused.value = false
+        inputRef.value?.blur()
+    }
+}
+
+const handleGlobalShortcut = (event) => {
+    const tag = document.activeElement?.tagName
+    const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable
+
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        inputRef.value?.focus()
+        isSearchFocused.value = true
+    } else if (event.key === '/' && !isTyping) {
+        event.preventDefault()
+        inputRef.value?.focus()
+        isSearchFocused.value = true
+    }
+}
 
 const handleClickOutside = (event) => {
     if (containerRef.value && !containerRef.value.contains(event.target)) {
@@ -82,10 +131,12 @@ const handleClickOutside = (event) => {
 
 onMounted(() => {
     document.addEventListener('click', handleClickOutside)
+    document.addEventListener('keydown', handleGlobalShortcut)
 })
 
 onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside)
+    document.removeEventListener('keydown', handleGlobalShortcut)
 })
 
 const getCategoryIcon = (type) => {
@@ -125,7 +176,8 @@ const getCategoryIcon = (type) => {
                 <Search v-if="!isLoading" class="h-3.5 w-3.5 text-slate-400 dark:text-zinc-500 shrink-0 mr-2" />
                 <Loader2 v-else class="h-3.5 w-3.5 text-slate-400 dark:text-zinc-500 shrink-0 mr-2 animate-spin" />
 
-                <input v-model="searchQuery" type="text" @focus="isSearchFocused = true"
+                <input ref="inputRef" v-model="searchQuery" type="text" @focus="isSearchFocused = true"
+                    @keydown="handleKeydown"
                     :placeholder="`Search ${selectedCategory === 'All' ? 'products, SKU, brands...' : selectedCategory.toLowerCase() + '...'}`"
                     class="w-full bg-transparent border-none p-0 text-xs text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-0" />
 
@@ -133,32 +185,37 @@ const getCategoryIcon = (type) => {
                     class="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200">
                     <X class="h-3 w-3" />
                 </button>
+                <kbd v-else-if="!isSearchFocused"
+                    class="hidden sm:inline-block font-mono text-[10px] text-slate-400 dark:text-zinc-500 px-1.5 py-0.5 rounded border border-slate-200 dark:border-zinc-700">
+                    /
+                </kbd>
             </div>
         </div>
 
-        <div v-if="isSearchFocused && searchQuery.trim()"
-            class="absolute left-0 top-full mt-2 w-full min-w-[320px] sm:min-w-[420px] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl z-50 py-2 max-h-80 overflow-y-auto">
-            <div
-                class="px-3 py-1.5 border-b border-slate-100 dark:border-zinc-800 text-[10px] uppercase font-bold text-slate-400 dark:text-zinc-500 flex justify-between items-center">
-                <span>Results for "{{ searchQuery }}"</span>
-                <span>Category: {{ selectedCategory }}</span>
-            </div>
-
-            <div v-if="searchResults.length > 0" class="divide-y divide-slate-100 dark:divide-zinc-800/60">
-                <Link v-for="result in searchResults" :key="result.id" :href="result.href"
-                    @click="isSearchFocused = false"
-                    class="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition group">
-                    <div class="flex items-center gap-3">
+        <div v-if="isSearchFocused && searchQuery.trim().length >= 2"
+            class="absolute left-0 top-full mt-2 w-full min-w-[320px] sm:min-w-[420px] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl z-50 overflow-hidden">
+            <div v-if="searchResults.length > 0"
+                class="divide-y divide-slate-100 dark:divide-zinc-800/60 max-h-80 overflow-y-auto">
+                <Link v-for="(result, idx) in searchResults" :key="result.id" :href="result.href"
+                    @click="isSearchFocused = false" @mouseenter="activeIndex = idx" :class="[
+                        'flex items-center justify-between px-4 py-2.5 transition group',
+                        activeIndex === idx ? 'bg-slate-100 dark:bg-zinc-800/80' : 'hover:bg-slate-50 dark:hover:bg-zinc-800/50'
+                    ]">
+                    <div class="flex items-center gap-3 min-w-0">
                         <div
-                            class="p-1.5 rounded-md bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 group-hover:bg-slate-200 dark:group-hover:bg-zinc-700">
+                            class="p-1.5 rounded-md bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 shrink-0">
                             <component :is="getCategoryIcon(result.type)" class="h-4 w-4" />
                         </div>
-                        <div>
-                            <p class="text-xs font-semibold text-slate-800 dark:text-zinc-200">{{ result.title }}</p>
-                            <p class="text-[10px] text-slate-400 dark:text-zinc-500">{{ result.subtitle }}</p>
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold text-slate-800 dark:text-zinc-200 truncate">{{ result.title
+                                }}</p>
+                            <p class="text-[10px] text-slate-400 dark:text-zinc-500 truncate">{{ result.subtitle }}</p>
                         </div>
                     </div>
-                    <ArrowRight class="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition" />
+                    <ArrowRight :class="[
+                        'h-3.5 w-3.5 text-slate-400 shrink-0 transition',
+                        activeIndex === idx ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    ]" />
                 </Link>
             </div>
 
