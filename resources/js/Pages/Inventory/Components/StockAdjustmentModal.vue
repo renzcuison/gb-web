@@ -56,7 +56,7 @@ const submit = () => {
   <Dialog :open="open" @update:open="close">
     <DialogContent
       class="sm:max-w-[380px] p-5 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-none">
-      <DialogHeader class="pb-3 border-b border-zinc-100 dark:border-zinc-800">
+      <DialogHeader class="pb-2">
         <DialogTitle class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
           Adjust Stock
         </DialogTitle>
@@ -113,7 +113,7 @@ const submit = () => {
           </p>
         </div>
 
-        <DialogFooter class="pt-3 border-t border-zinc-100 dark:border-zinc-800 gap-2">
+        <DialogFooter class="pt-2 gap-2">
           <Button type="button" variant="ghost" size="sm" @click="close"
             class="h-8 text-xs font-medium text-zinc-600 dark:text-zinc-400 shadow-none">
             Cancel

@@ -59,32 +59,31 @@ const formatPrice = (variant) => {
 
 <template>
   <div class="bg-white dark:bg-zinc-900 rounded-md border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-    <div class="overflow-x-auto">
+    <div class="overflow-x-auto pt-2 pb-1">
       <Table>
-        <TableHeader>
-          <TableRow
-            class="border-b border-zinc-200 dark:border-zinc-800 hover:bg-transparent bg-zinc-50/60 dark:bg-zinc-900">
-            <TableHead class="text-xs font-medium text-zinc-500 dark:text-zinc-400 h-9">Product / Variant</TableHead>
-            <TableHead class="text-xs font-medium text-zinc-500 dark:text-zinc-400 h-9">SKU</TableHead>
-            <TableHead class="text-xs font-medium text-zinc-500 dark:text-zinc-400 h-9">Category &amp; Brand</TableHead>
-            <TableHead class="text-xs font-medium text-zinc-500 dark:text-zinc-400 h-9">Price</TableHead>
-            <TableHead class="text-xs font-medium text-zinc-500 dark:text-zinc-400 h-9">Stock</TableHead>
-            <TableHead class="text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 h-9">Action</TableHead>
+        <TableHeader class="[&_tr]:border-0">
+          <TableRow class="border-0 hover:bg-transparent">
+            <TableHead class="px-4 text-xs font-medium text-zinc-400 dark:text-zinc-500 h-8">Product / Variant</TableHead>
+            <TableHead class="px-4 text-xs font-medium text-zinc-400 dark:text-zinc-500 h-8">SKU</TableHead>
+            <TableHead class="px-4 text-xs font-medium text-zinc-400 dark:text-zinc-500 h-8">Category &amp; Brand</TableHead>
+            <TableHead class="px-4 text-xs font-medium text-zinc-400 dark:text-zinc-500 h-8">Price</TableHead>
+            <TableHead class="px-4 text-xs font-medium text-zinc-400 dark:text-zinc-500 h-8">Stock</TableHead>
+            <TableHead class="px-4 text-right text-xs font-medium text-zinc-400 dark:text-zinc-500 h-8">Action</TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
+        <TableBody class="[&_tr]:border-0">
           <TableRow v-for="variant in inventory.data" :key="variant.id" @click="emit('select', variant)"
-            class="border-b border-zinc-100 dark:border-zinc-800/70 hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 cursor-pointer">
-            <TableCell class="py-2.5">
-              <div class="text-xs font-medium text-zinc-900 dark:text-zinc-100">
+            class="border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 cursor-pointer transition-colors">
+            <TableCell class="px-4 py-2.5">
+              <div class="text-[13px] font-medium text-zinc-900 dark:text-zinc-100">
                 {{ variant.product?.name }}
               </div>
-              <div class="text-[11px] text-zinc-500 dark:text-zinc-400">
+              <div class="text-xs text-zinc-500 dark:text-zinc-400">
                 {{ variant.variant_label || 'Standard' }}
               </div>
             </TableCell>
 
-            <TableCell class="py-2.5" @click.stop>
+            <TableCell class="px-4 py-2.5" @click.stop>
               <button type="button" @click="copySku(variant.sku)" title="Click to copy SKU"
                 class="font-mono text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100">
                 <span v-if="copiedSku === variant.sku" class="text-emerald-600 dark:text-emerald-400">Copied</span>
@@ -92,21 +91,21 @@ const formatPrice = (variant) => {
               </button>
             </TableCell>
 
-            <TableCell class="py-2.5 text-xs text-zinc-500 dark:text-zinc-400">
+            <TableCell class="px-4 py-2.5 text-[13px] text-zinc-500 dark:text-zinc-400">
               {{ getClassification(variant) }}
             </TableCell>
 
-            <TableCell class="py-2.5 font-mono text-xs text-zinc-700 dark:text-zinc-300">
+            <TableCell class="px-4 py-2.5 font-mono text-[13px] text-zinc-700 dark:text-zinc-300">
               {{ formatPrice(variant) }}
             </TableCell>
 
-            <TableCell class="py-2.5">
-              <span :class="['text-xs font-mono font-medium', getStockDisplay(variant).class]">
+            <TableCell class="px-4 py-2.5">
+              <span :class="['text-[13px] font-mono font-medium', getStockDisplay(variant).class]">
                 {{ getStockDisplay(variant).text }}
               </span>
             </TableCell>
 
-            <TableCell class="py-2.5 text-right" @click.stop>
+            <TableCell class="px-4 py-2.5 text-right" @click.stop>
               <div v-if="!variant.deleted_at" class="inline-flex items-center gap-3.5">
                 <Link :href="route('products.edit', variant.product_id)"
                   class="text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
@@ -125,7 +124,7 @@ const formatPrice = (variant) => {
             </TableCell>
           </TableRow>
 
-          <TableRow v-if="!inventory.data || inventory.data.length === 0">
+          <TableRow v-if="!inventory.data || inventory.data.length === 0" class="border-0 hover:bg-transparent">
             <TableCell colspan="6" class="h-28 text-center text-xs text-zinc-400 dark:text-zinc-500">
               <div>No inventory records found.</div>
               <button v-if="hasActiveFilters" type="button" @click="router.get(route('inventory.index'))"
@@ -139,7 +138,7 @@ const formatPrice = (variant) => {
     </div>
 
     <div v-if="inventory.total > 0"
-      class="flex items-center justify-between px-4 py-2.5 border-t border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400">
+      class="flex items-center justify-between px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400">
       <span class="font-mono">
         {{ inventory.from }}–{{ inventory.to }} of {{ inventory.total }}
       </span>

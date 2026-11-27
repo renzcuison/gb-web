@@ -1,6 +1,10 @@
 <script setup>
 import { watch } from 'vue'
-import { Layers, Plus, Trash2 } from 'lucide-vue-next'
+import {
+  ImsLayersIcon,
+  ImsPlusIcon,
+  ImsTrashIcon,
+} from '@/Components/Icons/ImsIcons.vue'
 import { Input } from '@/Components/ui/input'
 import { Button } from '@/Components/ui/button'
 
@@ -57,7 +61,7 @@ watch(() => props.form.name, (newName) => {
   <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-6">
     <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-zinc-800">
       <div class="flex items-center gap-2">
-        <Layers class="h-5 w-5 text-slate-500 dark:text-zinc-400" />
+        <ImsLayersIcon class="h-5 w-5 text-slate-500 dark:text-zinc-400" />
         <div>
           <h2 class="text-base font-semibold text-slate-900 dark:text-zinc-100">Item Variants & Stock</h2>
           <p class="text-xs text-slate-500 dark:text-zinc-400">Configure distinct SKUs, prices, and initial quantities.</p>
@@ -70,7 +74,7 @@ watch(() => props.form.name, (newName) => {
         @click="addVariant"
         class="gap-1.5 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
       >
-        <Plus class="h-4 w-4" />
+        <ImsPlusIcon class="h-4 w-4" />
         <span>Add Variant</span>
       </Button>
     </div>
@@ -91,7 +95,7 @@ watch(() => props.form.name, (newName) => {
             @click="removeVariant(index)"
             class="text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 p-1 transition-colors"
           >
-            <Trash2 class="h-4 w-4" />
+            <ImsTrashIcon class="h-4 w-4" />
           </button>
         </div>
 

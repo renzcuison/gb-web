@@ -1,6 +1,10 @@
 <script setup>
 import { ref, onBeforeUnmount } from 'vue'
-import { ImagePlus, Star, Trash2 } from 'lucide-vue-next'
+import {
+  ImsImagePlusIcon,
+  ImsStarIcon,
+  ImsTrashIcon,
+} from '@/Components/Icons/ImsIcons.vue'
 import { Button } from '@/Components/ui/button'
 
 const props = defineProps({
@@ -124,7 +128,7 @@ onBeforeUnmount(() => {
   <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-5">
     <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-zinc-800">
       <div class="flex items-center gap-2">
-        <ImagePlus class="h-5 w-5 text-slate-500 dark:text-zinc-400" />
+        <ImsImagePlusIcon class="h-5 w-5 text-slate-500 dark:text-zinc-400" />
         <div>
           <h2 class="text-base font-semibold text-slate-900 dark:text-zinc-100">Product Media</h2>
           <p class="text-xs text-slate-500 dark:text-zinc-400">
@@ -149,7 +153,7 @@ onBeforeUnmount(() => {
           @click="fileInput?.click()"
           class="gap-1.5 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
         >
-          <ImagePlus class="h-4 w-4" />
+          <ImsImagePlusIcon class="h-4 w-4" />
           <span>Upload Images</span>
         </Button>
       </div>
@@ -181,7 +185,7 @@ onBeforeUnmount(() => {
             title="Set as primary"
             class="p-1 rounded text-white hover:text-amber-400 transition-colors"
           >
-            <Star class="h-4 w-4" :class="form.primary_media_id === media.id ? 'fill-amber-400 text-amber-400' : ''" />
+            <ImsStarIcon class="h-4 w-4" :class="form.primary_media_id === media.id ? 'fill-amber-400 text-amber-400' : ''" />
           </button>
           <button
             type="button"
@@ -189,7 +193,7 @@ onBeforeUnmount(() => {
             title="Remove image"
             class="p-1 rounded text-white hover:text-rose-400 transition-colors"
           >
-            <Trash2 class="h-4 w-4" />
+            <ImsTrashIcon class="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -216,7 +220,7 @@ onBeforeUnmount(() => {
             title="Set as primary"
             class="p-1 rounded text-white hover:text-amber-400 transition-colors"
           >
-            <Star class="h-4 w-4" :class="isNewPrimary(index) ? 'fill-amber-400 text-amber-400' : ''" />
+            <ImsStarIcon class="h-4 w-4" :class="isNewPrimary(index) ? 'fill-amber-400 text-amber-400' : ''" />
           </button>
           <button
             type="button"
@@ -224,7 +228,7 @@ onBeforeUnmount(() => {
             title="Remove image"
             class="p-1 rounded text-white hover:text-rose-400 transition-colors"
           >
-            <Trash2 class="h-4 w-4" />
+            <ImsTrashIcon class="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -236,7 +240,7 @@ onBeforeUnmount(() => {
       @click="fileInput?.click()"
       class="w-full py-8 border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-500 dark:text-zinc-400 hover:border-slate-300 dark:hover:border-zinc-700 hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-colors"
     >
-      <ImagePlus class="h-6 w-6 text-slate-400 dark:text-zinc-500" />
+      <ImsImagePlusIcon class="h-6 w-6 text-slate-400 dark:text-zinc-500" />
       <span class="text-xs font-medium">Click to select product photos</span>
     </button>
 

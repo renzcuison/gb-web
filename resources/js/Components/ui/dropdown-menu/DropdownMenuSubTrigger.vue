@@ -1,6 +1,6 @@
 <script setup>
 import { reactiveOmit } from "@vueuse/core";
-import { ChevronRight } from "lucide-vue-next";
+import { ImsChevronRightIcon } from "@/Components/Icons/ImsIcons.vue";
 import { DropdownMenuSubTrigger, useForwardProps } from "reka-ui";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +28,6 @@ const forwardedProps = useForwardProps(delegatedProps);
     "
   >
     <slot />
-    <ChevronRight class="ml-auto h-4 w-4" />
+    <ImsChevronRightIcon class="ml-auto h-4 w-4" />
   </DropdownMenuSubTrigger>
 </template>

@@ -8,7 +8,10 @@ import InventoryTable from './Components/InventoryTable.vue'
 import InventoryDetailSheet from './Components/InventoryDetailSheet.vue'
 import StockAdjustmentModal from './Components/StockAdjustmentModal.vue'
 import { Button } from '@/Components/ui/button'
-import { Download, ChevronDown } from 'lucide-vue-next'
+import {
+  ImsDownloadIcon,
+  ImsChevronDownIcon,
+} from '@/Components/Icons/ImsIcons.vue'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,9 +94,9 @@ const openAdjustModal = (variant) => {
               size="sm"
               variant="outline"
               class="h-8 text-xs font-medium gap-1.5 border-zinc-200 dark:border-zinc-800 bg-white hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-3 shadow-none">
-              <Download class="h-3.5 w-3.5" />
+              <ImsDownloadIcon class="h-3.5 w-3.5" />
               <span>Export</span>
-              <ChevronDown class="h-3 w-3 opacity-60" />
+              <ImsChevronDownIcon class="h-3 w-3 opacity-60" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" class="w-44 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">

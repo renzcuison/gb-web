@@ -37,13 +37,17 @@ class InventoryController extends Controller
 
         if ($status === 'archived') {
             $query->onlyTrashed();
-        } elseif ($status === 'in_stock') {
-            $query->whereColumn('stock_qty', '>', 'low_stock_threshold');
-        } elseif ($status === 'low_stock') {
-            $query->where('stock_qty', '>', 0)
-                ->whereColumn('stock_qty', '<=', 'low_stock_threshold');
-        } elseif ($status === 'out_of_stock') {
-            $query->where('stock_qty', '<=', 0);
+        } else {
+            $query->whereHas('product');
+
+            if ($status === 'in_stock') {
+                $query->whereColumn('stock_qty', '>', 'low_stock_threshold');
+            } elseif ($status === 'low_stock') {
+                $query->where('stock_qty', '>', 0)
+                    ->whereColumn('stock_qty', '<=', 'low_stock_threshold');
+            } elseif ($status === 'out_of_stock') {
+                $query->where('stock_qty', '<=', 0);
+            }
         }
 
         if ($search) {
@@ -82,13 +86,16 @@ class InventoryController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $liveVariantsQuery = ProductVariant::whereHas('product');
+
         $stats = [
-            'total' => ProductVariant::count(),
-            'in_stock' => ProductVariant::whereColumn('stock_qty', '>', 'low_stock_threshold')->count(),
-            'low_stock' => ProductVariant::where('stock_qty', '>', 0)
+            'total' => (clone $liveVariantsQuery)->count(),
+            'in_stock' => (clone $liveVariantsQuery)->whereColumn('stock_qty', '>', 'low_stock_threshold')->count(),
+            'low_stock' => (clone $liveVariantsQuery)
+                ->where('stock_qty', '>', 0)
                 ->whereColumn('stock_qty', '<=', 'low_stock_threshold')
                 ->count(),
-            'out_of_stock' => ProductVariant::where('stock_qty', '<=', 0)->count(),
+            'out_of_stock' => (clone $liveVariantsQuery)->where('stock_qty', '<=', 0)->count(),
             'archived' => ProductVariant::onlyTrashed()->count(),
         ];
 

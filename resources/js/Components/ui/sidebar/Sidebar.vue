@@ -23,7 +23,7 @@ const isCollapsed = computed(() => !sidebar.isMobile.value && !sidebar.open.valu
   <aside
     :data-state="isCollapsed ? 'collapsed' : 'expanded'"
     :data-collapsible="isCollapsed ? collapsible : ''"
-    class="group fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col border-r bg-white dark:bg-zinc-900 transition-all duration-200 md:sticky md:top-0 overflow-hidden"
+    class="group fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col border-r bg-white dark:bg-zinc-900 md:sticky md:top-0 overflow-hidden"
     :class="[
       sidebar.isMobile.value
         ? sidebar.openMobile.value

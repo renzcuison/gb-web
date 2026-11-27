@@ -1,5 +1,6 @@
 <script setup>
 import { Link } from '@inertiajs/vue3'
+import { ImsChevronRightIcon } from '@/Components/Icons/ImsIcons.vue'
 
 defineProps({
   items: { type: Array, default: () => [] },
@@ -7,35 +8,45 @@ defineProps({
 </script>
 
 <template>
-  <div class="bg-white dark:bg-zinc-900 rounded-md border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-    <div class="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-      <h2 class="text-xs font-medium text-zinc-700 dark:text-zinc-300">Top Stocked Items</h2>
-      <Link :href="route('inventory.index', { sort: 'stock_desc' })"
-        class="text-[11px] font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors">
-        View all
+  <div class="bg-white dark:bg-zinc-900 rounded-md border border-zinc-200 dark:border-zinc-800 p-4 space-y-3">
+    <div class="flex items-center justify-between">
+      <h2 class="text-sm font-medium text-zinc-800 dark:text-zinc-200">Top Stocked Items</h2>
+      <Link
+        :href="route('inventory.index', { sort: 'stock_desc' })"
+        aria-label="View top stocked items"
+        class="inline-flex items-center justify-center p-1 -mr-1 text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-100"
+      >
+        <ImsChevronRightIcon class="h-3.5 w-3.5" />
       </Link>
     </div>
 
-    <div class="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-      <Link v-for="item in items" :key="item.id" :href="route('inventory.index', { search: item.sku })"
-        class="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40 transition-colors">
-        <div class="min-w-0 flex-1">
-          <div class="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate">
-            {{ item.product?.name || 'Unknown Product' }}
+    <div v-if="items.length" class="space-y-1 -mx-2">
+      <Link
+        v-for="item in items"
+        :key="item.id"
+        :href="route('inventory.index', { search: item.sku })"
+        class="px-2 py-2 rounded-md flex items-center justify-between gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+      >
+        <div class="min-w-0">
+          <div class="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 truncate">
+            {{ item.product?.name || 'Item' }}
           </div>
-          <div class="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 truncate">
-            {{ item.sku }}<span v-if="item.variant_label"> · {{ item.variant_label }}</span>
+          <div class="font-mono text-xs text-zinc-400 dark:text-zinc-500 truncate">
+            {{ item.sku }}
+            <span v-if="item.variant_label && item.variant_label !== 'Standard'">
+              · {{ item.variant_label }}
+            </span>
           </div>
         </div>
 
-        <span class="text-xs font-mono font-medium text-zinc-700 dark:text-zinc-300 shrink-0">
-          {{ item.stock_qty }} units
+        <span class="shrink-0 font-mono text-[13px] font-medium text-zinc-700 dark:text-zinc-300">
+          {{ item.stock_qty }}
         </span>
       </Link>
+    </div>
 
-      <div v-if="items.length === 0" class="py-8 text-center text-xs text-zinc-400 dark:text-zinc-500">
-        No stock recorded yet.
-      </div>
+    <div v-else class="py-6 text-center text-xs text-zinc-400 dark:text-zinc-500">
+      No stock data available.
     </div>
   </div>
 </template>

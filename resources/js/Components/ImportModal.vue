@@ -1,7 +1,12 @@
 <script setup>
-import { ref } from 'vue'
-import { useForm } from '@inertiajs/vue3'
-import { Upload, FileSpreadsheet, AlertCircle, Loader2 } from 'lucide-vue-next'
+import { ref, computed } from 'vue'
+import { useForm, router } from '@inertiajs/vue3'
+import {
+    ImsUploadIcon,
+    ImsSpreadsheetIcon,
+    ImsStatusDangerIcon,
+    ImsLoaderIcon,
+} from '@/Components/Icons/ImsIcons.vue'
 import { Button } from '@/Components/ui/button'
 import {
     Dialog,
@@ -13,110 +18,202 @@ import {
 } from '@/Components/ui/dialog'
 
 const props = defineProps({
-    open: {
-        type: Boolean,
-        default: false
-    }
+    open: Boolean,
 })
 
 const emit = defineEmits(['update:open'])
 
 const fileInput = ref(null)
+const dragActive = ref(false)
+const fileError = ref('')
 
 const form = useForm({
-    file: null
+    file: null,
+    notes: '',
 })
 
-const handleFileChange = (e) => {
-    form.file = e.target.files[0] || null
+const selectedFileName = computed(() => form.file?.name || null)
+const selectedFileSize = computed(() => {
+    if (!form.file) return null
+    const bytes = form.file.size
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+})
+
+const allowedTypes = [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+    'text/csv',
+]
+
+function validateAndSetFile(file) {
+    fileError.value = ''
+    if (!file) return
+
+    const ext = file.name.split('.').pop().toLowerCase()
+    if (!['xlsx', 'xls', 'csv'].includes(ext) && !allowedTypes.includes(file.type)) {
+        fileError.value = 'Please select an Excel (.xlsx, .xls) or CSV (.csv) file.'
+        return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+        fileError.value = 'File exceeds the 10 MB maximum size.'
+        return
+    }
+
+    form.file = file
 }
 
-const submitImport = () => {
-    if (!form.file) return
-
-    form.post(route('products.import'), {
-        preserveScroll: true,
-        onSuccess: () => closeModal()
-    })
+function onFileChange(event) {
+    validateAndSetFile(event.target.files?.[0])
 }
 
-const closeModal = () => {
-    form.reset()
-    form.clearErrors()
+function onDrop(event) {
+    dragActive.value = false
+    validateAndSetFile(event.dataTransfer?.files?.[0])
+}
+
+function clearFile() {
+    form.file = null
+    fileError.value = ''
     if (fileInput.value) {
         fileInput.value.value = ''
     }
+}
+
+function submit() {
+    if (!form.file) {
+        fileError.value = 'Please choose a spreadsheet to import.'
+        return
+    }
+
+    form.post(route('inventory.import'), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            clearFile()
+            form.reset()
+            emit('update:open', false)
+            router.reload({ preserveScroll: true })
+        },
+    })
+}
+
+function close() {
+    if (form.processing) return
+    clearFile()
+    form.clearErrors()
     emit('update:open', false)
 }
 </script>
 
 <template>
-    <Dialog :open="open" @update:open="closeModal">
-        <DialogContent
-            class="sm:max-w-[480px] dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100 data-[state=open]:animate-none data-[state=closed]:animate-none duration-0">
+    <Dialog :open="open" @update:open="close">
+        <DialogContent class="sm:max-w-lg">
             <DialogHeader>
-                <DialogTitle class="dark:text-zinc-100 flex items-center gap-2">
-                    <FileSpreadsheet class="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                    <span>Import Products</span>
-                </DialogTitle>
-                <DialogDescription class="dark:text-zinc-400">
-                    Upload an Excel spreadsheet (.xlsx, .xls) or CSV file containing your product catalog.
+                <DialogTitle>Import Inventory</DialogTitle>
+                <DialogDescription>
+                    Upload an Excel (.xlsx, .xls) or CSV file containing your product catalog and opening stock balances.
                 </DialogDescription>
             </DialogHeader>
 
-            <form @submit.prevent="submitImport" class="space-y-4 my-2">
-                <!-- Dropzone / Selection Box -->
-                <div>
-                    <label for="excel-file-input"
-                        class="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed rounded-xl cursor-pointer bg-slate-50 dark:bg-zinc-800/50 hover:bg-slate-100 dark:hover:bg-zinc-800 border-slate-200 dark:border-zinc-700 transition">
-                        <div class="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-                            <Upload class="w-8 h-8 mb-2 text-slate-400 dark:text-zinc-500" />
-                            <p class="text-xs text-slate-600 dark:text-zinc-300">
-                                <span v-if="!form.file" class="font-semibold">Click to browse or drag & drop</span>
-                                <span v-else class="font-bold text-emerald-600 dark:text-emerald-400">{{ form.file.name
-                                }}</span>
-                            </p>
-                            <p class="text-[11px] text-slate-400 dark:text-zinc-500 mt-1">XLSX, XLS, CSV up to 10MB</p>
-                        </div>
-                        <input id="excel-file-input" ref="fileInput" type="file" class="hidden" accept=".xlsx,.xls,.csv"
-                            @change="handleFileChange" />
-                    </label>
+            <form @submit.prevent="submit" class="space-y-4">
+                <div
+                    class="relative rounded-lg border-2 border-dashed p-6 text-center transition-colors cursor-pointer"
+                    :class="[
+                        dragActive
+                            ? 'border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-900'
+                            : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700',
+                    ]"
+                    @click="fileInput?.click()"
+                    @dragover.prevent="dragActive = true"
+                    @dragleave.prevent="dragActive = false"
+                    @drop.prevent="onDrop"
+                >
+                    <input
+                        ref="fileInput"
+                        type="file"
+                        accept=".xlsx,.xls,.csv"
+                        class="hidden"
+                        @change="onFileChange"
+                    />
 
-                    <!-- Upload Progress Bar -->
-                    <div v-if="form.progress" class="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-1.5 mt-3">
-                        <div class="bg-emerald-500 h-1.5 rounded-full transition-all duration-300"
-                            :style="{ width: `${form.progress.percentage}%` }"></div>
+                    <div v-if="!selectedFileName" class="flex flex-col items-center gap-2">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                            <ImsUploadIcon class="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
+                        </div>
+                        <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                            Click to upload or drag and drop
+                        </div>
+                        <p class="text-xs text-zinc-500">
+                            XLSX, XLS, or CSV up to 10 MB
+                        </p>
                     </div>
 
-                    <!-- General Error Message -->
-                    <p v-if="typeof form.errors.file === 'string'"
-                        class="text-xs font-medium text-rose-600 dark:text-rose-400 mt-2">
-                        {{ form.errors.file }}
-                    </p>
-
-                    <!-- Row Validation Failure Summary -->
-                    <div v-if="Array.isArray(form.errors.file)"
-                        class="mt-3 p-3 bg-rose-50 dark:bg-rose-950/30 rounded-lg border border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300 max-h-36 overflow-y-auto space-y-1">
-                        <div class="flex items-center gap-1.5 font-bold mb-1">
-                            <AlertCircle class="h-3.5 w-3.5" />
-                            <span>Import Validation Issues:</span>
+                    <div v-else class="flex items-center justify-between gap-3 text-left">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+                                <ImsSpreadsheetIcon class="h-5 w-5" />
+                            </div>
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                    {{ selectedFileName }}
+                                </p>
+                                <p class="text-xs text-zinc-500">
+                                    {{ selectedFileSize }}
+                                </p>
+                            </div>
                         </div>
-                        <ul class="list-disc list-inside space-y-0.5 text-[11px]">
-                            <li v-for="(err, idx) in form.errors.file" :key="idx">{{ err }}</li>
-                        </ul>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            @click.stop="clearFile"
+                            :disabled="form.processing"
+                        >
+                            Change
+                        </Button>
                     </div>
                 </div>
 
-                <DialogFooter class="pt-4 border-t border-slate-100 dark:border-zinc-800">
-                    <Button type="button" variant="ghost" @click="closeModal" :disabled="form.processing"
-                        class="dark:text-zinc-400 dark:hover:text-zinc-100">
+                <div
+                    v-if="fileError || form.errors.file"
+                    class="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+                >
+                    <ImsStatusDangerIcon class="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>{{ fileError || form.errors.file }}</span>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label for="import-notes" class="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                        Import Notes <span class="text-zinc-400 font-normal">(optional)</span>
+                    </label>
+                    <textarea
+                        id="import-notes"
+                        v-model="form.notes"
+                        rows="2"
+                        placeholder="e.g., March restock shipment, Perfume stocktake..."
+                        :disabled="form.processing"
+                        class="flex min-h-[64px] w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-transparent px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                </div>
+
+                <DialogFooter class="gap-2 sm:gap-0">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        @click="close"
+                        :disabled="form.processing"
+                    >
                         Cancel
                     </Button>
-                    <Button type="submit" :disabled="!form.file || form.processing"
-                        class="gap-2 dark:bg-zinc-100 dark:text-zinc-900">
-                        <Loader2 v-if="form.processing" class="h-4 w-4 animate-spin" />
-                        <span v-if="form.processing">Importing...</span>
-                        <span v-else>Upload & Import</span>
+                    <Button
+                        type="submit"
+                        :disabled="!form.file || form.processing"
+                    >
+                        <ImsLoaderIcon v-if="form.processing" class="mr-2 h-4 w-4 animate-spin" />
+                        {{ form.processing ? 'Importing...' : 'Start Import' }}
                     </Button>
                 </DialogFooter>
             </form>

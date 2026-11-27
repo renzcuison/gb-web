@@ -5,6 +5,7 @@ import Logo from '@/Components/Logo.vue';
 import SearchBar from '@/Components/SearchBar.vue';
 import Hamburger from '@/Pages/Storefront/Header/Mobile/Hamburger.vue';
 import MobileMenuTray from './Tray.vue';
+import { ImsChevronDownIcon, ImsUserIcon } from '@/Components/Icons/ImsIcons.vue';
 
 const props = defineProps({
     isOpen: Boolean,
@@ -48,10 +49,9 @@ const toggleDropdown = (slug) => {
                         opacity: animateIn ? 1 : 0
                     }">
                     {{ item.name }}
-                    <svg :class="['w-4 h-4 text-zinc-400 transition-transform duration-200', activeDropdown === item.slug ? 'rotate-180' : '']"
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M19 9l-7 7-7-7" stroke-width="1" stroke-linecap="square" />
-                    </svg>
+                    <ImsChevronDownIcon
+                        :class="['w-4 h-4 text-zinc-400 transition-transform duration-200', activeDropdown === item.slug ? 'rotate-180' : '']"
+                    />
                 </button>
 
                 <MobileMenuTray :is-active="activeDropdown === item.slug" :item="item" :is-visible="animateIn"
@@ -68,12 +68,7 @@ const toggleDropdown = (slug) => {
                 :href="$page.props.auth?.user ? route('dashboard') : route('login')"
                 @click="emit('close')"
                 class="flex items-center space-x-3 text-sm font-normal tracking-normal text-zinc-400 hover:text-black transition-colors group">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-                    class="stroke-current">
-                    <circle cx="12" cy="8.5" r="3" stroke-width="1" />
-                    <path d="M17.5 21C17.5 18.5147 15.0376 16.5 12 16.5C8.96243 16.5 6.5 18.5147 6.5 21"
-                        stroke-width="1" stroke-linecap="square" />
-                </svg>
+                <ImsUserIcon class="w-[18px] h-[18px]" />
                 <span>{{ $page.props.auth?.user ? 'Dashboard' : 'Sign in' }}</span>
             </Link>
         </div>

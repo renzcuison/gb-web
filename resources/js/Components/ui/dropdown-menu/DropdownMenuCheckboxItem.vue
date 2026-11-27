@@ -1,6 +1,6 @@
 <script setup>
 import { reactiveOmit } from "@vueuse/core";
-import { Check } from "lucide-vue-next";
+import { ImsCheckIcon } from "@/Components/Icons/ImsIcons.vue";
 import {
   DropdownMenuCheckboxItem,
   DropdownMenuItemIndicator,
@@ -35,7 +35,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
   >
     <span class="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <DropdownMenuItemIndicator>
-        <Check class="w-4 h-4" />
+        <ImsCheckIcon class="w-4 h-4" />
       </DropdownMenuItemIndicator>
     </span>
     <slot />

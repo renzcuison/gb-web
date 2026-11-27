@@ -6,6 +6,7 @@ import Logo from '@/Components/Logo.vue';
 import Hamburger from '@/Pages/Storefront/Header/Mobile/Hamburger.vue';
 import MobileMenu from './Mobile/Index.vue';
 import MegaMenu from './MegaMenu.vue';
+import { ImsUserIcon } from '@/Components/Icons/ImsIcons.vue';
 
 const headerRef = ref(null);
 const isMobileMenuOpen = ref(false);
@@ -79,15 +80,10 @@ onBeforeUnmount(() => {
                             <SearchBar />
                         </div>
                         <Link
-                            :href="$page.props.auth?.user ? route('dashboard') : route('login')"
-                            :title="$page.props.auth?.user ? 'Dashboard' : 'Sign in'"
-                            class="hidden md:block text-zinc-700 hover:text-black transition-colors duration-200">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="12" cy="8.5" r="3" stroke="currentColor" stroke-width="1" />
-                                <path d="M17.5 21C17.5 18.5147 15.0376 16.5 12 16.5C8.96243 16.5 6.5 18.5147 6.5 21"
-                                    stroke="currentColor" stroke-width="1" stroke-linecap="square" />
-                            </svg>
+                        :href="$page.props.auth?.user ? route('dashboard') : route('login')"
+                        :title="$page.props.auth?.user ? 'Dashboard' : 'Sign in'"
+                        class="hidden md:block text-zinc-700 hover:text-black transition-colors duration-200">
+                        <ImsUserIcon class="w-[18px] h-[18px]" />
                         </Link>
                     </div>
                     <Hamburger :is-open="isMobileMenuOpen" @toggle="isMobileMenuOpen = !isMobileMenuOpen"

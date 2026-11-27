@@ -1,6 +1,6 @@
 <script setup>
 import { reactiveOmit } from "@vueuse/core";
-import { Circle } from "lucide-vue-next";
+import { ImsCircleDotIcon } from "@/Components/Icons/ImsIcons.vue";
 import {
   DropdownMenuItemIndicator,
   DropdownMenuRadioItem,
@@ -36,7 +36,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
   >
     <span class="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <DropdownMenuItemIndicator>
-        <Circle class="h-4 w-4 fill-current" />
+        <ImsCircleDotIcon class="h-4 w-4 fill-current" />
       </DropdownMenuItemIndicator>
     </span>
     <slot />

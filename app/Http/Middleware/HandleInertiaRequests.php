@@ -151,13 +151,15 @@ class HandleInertiaRequests extends Middleware
 
             'admin_badges' => fn () => $request->user()?->isAdmin()
                 ? [
-                    'unresolved_alerts' => InventoryAlert::where('is_resolved', false)->count(),
+                    'unresolved_alerts' => \App\Models\ProductVariant::whereHas('product')
+                        ->whereColumn('stock_qty', '<=', 'low_stock_threshold')
+                        ->count(),
                     'new_inquiries' => Inquiry::where('status', Inquiry::STATUS_NEW)->count(),
                 ]
                 : [
                     'unresolved_alerts' => 0,
                     'new_inquiries' => 0,
-            ],
+                ],
         ]);
     }
 }

@@ -5,7 +5,7 @@ import ProductGeneralForm from './Components/ProductGeneralForm.vue'
 import ProductMediaUploader from './Components/ProductMediaUploader.vue'
 import ProductVariantBuilder from './Components/ProductVariantBuilder.vue'
 import { Button } from '@/Components/ui/button'
-import { ArrowLeft } from 'lucide-vue-next'
+import { ImsArrowLeftIcon } from '@/Components/Icons/ImsIcons.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -59,7 +59,7 @@ const handleSubmit = () => {
             <div class="space-y-1">
                 <Link :href="route('inventory.index')"
                     class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 transition-colors">
-                    <ArrowLeft class="h-3.5 w-3.5" />
+                    <ImsArrowLeftIcon class="h-3.5 w-3.5" />
                     <span>Back to Inventory</span>
                 </Link>
                 <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-zinc-100">

@@ -1,0 +1,1253 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: resources/js/Components/RecentActivities.vue, resources/js/Components/GlobalSearch.vue, resources/js/Components/NotificationDropdown.vue, resources/js/Components/UserMenu.vue, resources/js/Layouts/AdminLayout.vue
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+resources/
+  js/
+    Components/
+      GlobalSearch.vue
+      NotificationDropdown.vue
+      RecentActivities.vue
+      UserMenu.vue
+    Layouts/
+      AdminLayout.vue
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="resources/js/Components/UserMenu.vue">
+<script setup>
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { usePage, Link, router } from '@inertiajs/vue3'
+import {
+  ImsUserIcon,
+  ImsSettingsIcon,
+  ImsMoonIcon,
+  ImsSunIcon,
+  ImsBugIcon,
+  ImsSignOutIcon,
+  ImsChevronDownIcon,
+} from '@/Components/Icons/ImsIcons.vue'
+
+const page = usePage()
+const user = computed(() => page.props.auth?.user || { name: 'Admin User', email: 'admin@example.com' })
+
+const isOpen = ref(false)
+const containerRef = ref(null)
+const isDarkMode = ref(false)
+
+const syncDarkModeState = () => {
+  isDarkMode.value = document.documentElement.classList.contains('dark')
+}
+
+const toggleDarkMode = () => {
+  isDarkMode.value = !isDarkMode.value
+  if (isDarkMode.value) {
+    document.documentElement.classList.add('dark')
+    localStorage.setItem('theme', 'dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+    localStorage.setItem('theme', 'light')
+  }
+}
+
+const handleClickOutside = (event) => {
+  if (containerRef.value && !containerRef.value.contains(event.target)) {
+    isOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  syncDarkModeState()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+
+const handleLogout = () => {
+  isOpen.value = false
+  router.post('/logout')
+}
+
+const handleReportBug = () => {
+  isOpen.value = false
+  alert('Report a Bug form initialized. You can connect a modal or route here.')
+}
+
+const userInitials = computed(() => {
+  if (!user.value?.name) return 'A'
+  return user.value.name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+})
+
+const avatarBgColor = computed(() => user.value?.resolved_avatar_color || '#18181b')
+</script>
+
+<template>
+  <div ref="containerRef" class="relative [&_*]:!transition-none">
+    <button
+      @click="isOpen = !isOpen"
+      class="flex items-center gap-2.5 p-1.5 pl-2 rounded-md text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 focus:outline-none"
+    >
+      <img
+        v-if="user.avatar_url"
+        :src="user.avatar_url"
+        :alt="user.name"
+        class="h-8 w-8 rounded-md object-cover shrink-0"
+      />
+      <div
+        v-else
+        :style="{ backgroundColor: avatarBgColor }"
+        class="h-8 w-8 rounded-md text-white font-semibold text-xs flex items-center justify-center shrink-0"
+      >
+        {{ userInitials }}
+      </div>
+
+      <div class="hidden md:block text-left">
+        <p class="text-[13px] font-semibold leading-tight text-zinc-900 dark:text-zinc-100">{{ user.name }}</p>
+        <p class="text-xs text-zinc-400 dark:text-zinc-500 leading-tight capitalize">
+          {{ user.role === 'admin' ? 'Administrator' : user.role || 'Member' }}
+        </p>
+      </div>
+
+      <ImsChevronDownIcon
+        class="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500"
+        :class="{ 'rotate-180': isOpen }"
+      />
+    </button>
+
+    <div
+      v-if="isOpen"
+      class="absolute right-0 mt-2 w-72 rounded-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-lg z-50 overflow-hidden"
+    >
+      <div class="p-4 bg-zinc-50/70 dark:bg-zinc-800/30">
+        <div class="flex items-center gap-3">
+          <img
+            v-if="user.avatar_url"
+            :src="user.avatar_url"
+            :alt="user.name"
+            class="h-10 w-10 rounded-md object-cover shrink-0"
+          />
+          <div
+            v-else
+            :style="{ backgroundColor: avatarBgColor }"
+            class="h-10 w-10 rounded-md text-white font-semibold text-sm flex items-center justify-center shrink-0"
+          >
+            {{ userInitials }}
+          </div>
+          <div class="overflow-hidden">
+            <p class="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100 truncate">{{ user.name }}</p>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 truncate">{{ user.email }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="py-1 text-[13px]">
+        <Link
+          href="/profile"
+          @click="isOpen = false"
+          class="flex items-center gap-2.5 px-4 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+        >
+          <ImsUserIcon class="h-4 w-4 text-zinc-400 dark:text-zinc-500" />
+          <span>Profile Settings</span>
+        </Link>
+
+        <Link
+          href="/settings"
+          @click="isOpen = false"
+          class="flex items-center gap-2.5 px-4 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+        >
+          <ImsSettingsIcon class="h-4 w-4 text-zinc-400 dark:text-zinc-500" />
+          <span>System Preferences</span>
+        </Link>
+
+        <a
+          href="#"
+          @click.prevent="handleReportBug"
+          class="flex items-center gap-2.5 px-4 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+        >
+          <ImsBugIcon class="h-4 w-4 text-amber-500" />
+          <span>Report a Bug</span>
+        </a>
+      </div>
+
+      <div class="p-3">
+        <div class="px-1 mb-2 text-xs uppercase font-semibold tracking-wider text-zinc-400 dark:text-zinc-500">
+          Appearance
+        </div>
+        <div class="flex items-center justify-between p-2 rounded-md bg-zinc-100 dark:bg-zinc-800/80 text-[13px]">
+          <div class="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+            <ImsSunIcon v-if="!isDarkMode" class="h-4 w-4 text-amber-500" />
+            <ImsMoonIcon v-else class="h-4 w-4 text-zinc-300" />
+            <span class="font-medium">{{ isDarkMode ? 'Dark Mode' : 'Light Mode' }}</span>
+          </div>
+
+          <button
+            type="button"
+            @click="toggleDarkMode"
+            aria-label="Toggle dark mode"
+            class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent focus:outline-none"
+            :class="isDarkMode ? 'bg-zinc-700' : 'bg-zinc-300'"
+          >
+            <span
+              class="pointer-events-none inline-block h-4 w-4 rounded-full bg-white ring-0"
+              :class="isDarkMode ? 'translate-x-4' : 'translate-x-0'"
+            />
+          </button>
+        </div>
+      </div>
+
+      <div class="py-1">
+        <button
+          @click="handleLogout"
+          class="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-medium"
+        >
+          <ImsSignOutIcon class="h-4 w-4" />
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Components/GlobalSearch.vue">
+<script setup>
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+import { Link, router } from '@inertiajs/vue3'
+import axios from 'axios'
+import {
+  ImsSearchIcon,
+  ImsInventoryIcon,
+  ImsTagIcon,
+  ImsBrandIcon,
+  ImsChevronDownIcon,
+  ImsCloseIcon,
+  ImsChevronRightIcon,
+} from '@/Components/Icons/ImsIcons.vue'
+
+const searchQuery = ref('')
+const selectedCategory = ref('All')
+const isSearchFocused = ref(false)
+const isCategoryDropdownOpen = ref(false)
+const isLoading = ref(false)
+const searchResults = ref([])
+const activeIndex = ref(-1)
+
+const containerRef = ref(null)
+const inputRef = ref(null)
+let debounceTimer = null
+
+const searchCategories = [
+  { name: 'All', icon: ImsSearchIcon },
+  { name: 'Products', icon: ImsInventoryIcon },
+  { name: 'Categories', icon: ImsTagIcon },
+  { name: 'Brands', icon: ImsBrandIcon },
+]
+
+const activeCategoryIcon = computed(() => {
+  const cat = searchCategories.find((c) => c.name === selectedCategory.value)
+  return cat ? cat.icon : ImsSearchIcon
+})
+
+const selectCategory = (categoryName) => {
+  selectedCategory.value = categoryName
+  isCategoryDropdownOpen.value = false
+  fetchSearchResults()
+}
+
+const fetchSearchResults = () => {
+  const q = searchQuery.value.trim()
+  if (q.length < 2) {
+    searchResults.value = []
+    activeIndex.value = -1
+    return
+  }
+
+  isLoading.value = true
+
+  axios
+    .get('/api/search', {
+      params: {
+        q,
+        category: selectedCategory.value,
+      },
+    })
+    .then((response) => {
+      searchResults.value = response.data
+      activeIndex.value = response.data.length > 0 ? 0 : -1
+    })
+    .catch(() => {
+      searchResults.value = []
+      activeIndex.value = -1
+    })
+    .finally(() => {
+      isLoading.value = false
+    })
+}
+
+watch(searchQuery, () => {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    fetchSearchResults()
+  }, 220)
+})
+
+const handleKeydown = (event) => {
+  if (!isSearchFocused.value || searchResults.value.length === 0) {
+    if (event.key === 'Escape') {
+      isSearchFocused.value = false
+      inputRef.value?.blur()
+    }
+    return
+  }
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    activeIndex.value = (activeIndex.value + 1) % searchResults.value.length
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    activeIndex.value = (activeIndex.value - 1 + searchResults.value.length) % searchResults.value.length
+  } else if (event.key === 'Enter' && activeIndex.value >= 0) {
+    event.preventDefault()
+    const selected = searchResults.value[activeIndex.value]
+    if (selected?.href) {
+      isSearchFocused.value = false
+      router.visit(selected.href)
+    }
+  } else if (event.key === 'Escape') {
+    isSearchFocused.value = false
+    inputRef.value?.blur()
+  }
+}
+
+const handleGlobalShortcut = (event) => {
+  const tag = document.activeElement?.tagName
+  const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable
+
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    inputRef.value?.focus()
+    isSearchFocused.value = true
+  } else if (event.key === '/' && !isTyping) {
+    event.preventDefault()
+    inputRef.value?.focus()
+    isSearchFocused.value = true
+  }
+}
+
+const handleClickOutside = (event) => {
+  if (containerRef.value && !containerRef.value.contains(event.target)) {
+    isCategoryDropdownOpen.value = false
+    isSearchFocused.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  document.addEventListener('keydown', handleGlobalShortcut)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('keydown', handleGlobalShortcut)
+})
+
+const getCategoryIcon = (type) => {
+  switch (type) {
+    case 'Products':
+      return ImsInventoryIcon
+    case 'Categories':
+      return ImsTagIcon
+    case 'Brands':
+      return ImsBrandIcon
+    default:
+      return ImsSearchIcon
+  }
+}
+</script>
+
+<template>
+  <div ref="containerRef" class="relative flex items-center [&_*]:!transition-none [&_*]:!animate-none">
+    <div
+      class="flex items-center h-9 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/80 rounded-md text-[13px] focus-within:border-zinc-400 dark:focus-within:border-zinc-500"
+    >
+      <div class="relative border-r border-zinc-200 dark:border-zinc-700">
+        <button
+          type="button"
+          @click="isCategoryDropdownOpen = !isCategoryDropdownOpen"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
+        >
+          <component :is="activeCategoryIcon" class="h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400" />
+          <span>{{ selectedCategory }}</span>
+          <ImsChevronDownIcon class="h-3 w-3 opacity-60 ml-0.5" />
+        </button>
+
+        <div
+          v-if="isCategoryDropdownOpen"
+          class="absolute top-full left-0 mt-1.5 w-40 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-lg p-1 space-y-0.5 z-50 text-[13px]"
+        >
+          <button
+            v-for="cat in searchCategories"
+            :key="cat.name"
+            @click="selectCategory(cat.name)"
+            class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left hover:bg-zinc-100 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300"
+            :class="{ 'font-semibold bg-zinc-100 dark:bg-zinc-800': selectedCategory === cat.name }"
+          >
+            <component :is="cat.icon" class="h-3.5 w-3.5 text-zinc-400" />
+            <span>{{ cat.name }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="relative flex items-center pl-2.5 pr-2 w-48 sm:w-64 md:w-80">
+        <ImsSearchIcon
+          class="h-3.5 w-3.5 shrink-0 mr-2"
+          :class="isLoading ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-500'"
+        />
+
+        <input
+          ref="inputRef"
+          v-model="searchQuery"
+          type="text"
+          @focus="isSearchFocused = true"
+          @keydown="handleKeydown"
+          :placeholder="`Search ${selectedCategory === 'All' ? 'products, SKU, brands...' : selectedCategory.toLowerCase() + '...'}`"
+          class="w-full bg-transparent border-none p-0 text-[13px] text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-0"
+        />
+
+        <button
+          v-if="searchQuery"
+          @click="searchQuery = ''; searchResults = []"
+          aria-label="Clear search"
+          class="p-0.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+        >
+          <ImsCloseIcon class="h-3 w-3" />
+        </button>
+        <kbd
+          v-else-if="!isSearchFocused"
+          class="hidden sm:inline-block font-mono text-xs text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700"
+        >
+          /
+        </kbd>
+      </div>
+    </div>
+
+    <div
+      v-if="isSearchFocused && searchQuery.trim().length >= 2"
+      class="absolute left-0 top-full mt-2 w-full min-w-[320px] sm:min-w-[420px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md shadow-lg z-50 overflow-hidden"
+    >
+      <div v-if="searchResults.length > 0" class="max-h-80 overflow-y-auto p-1.5 space-y-0.5">
+        <Link
+          v-for="(result, idx) in searchResults"
+          :key="result.id"
+          :href="result.href"
+          @click="isSearchFocused = false"
+          @mouseenter="activeIndex = idx"
+          :class="[
+            'flex items-center justify-between px-3 py-2 rounded-md group',
+            activeIndex === idx ? 'bg-zinc-100 dark:bg-zinc-800/80' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50',
+          ]"
+        >
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="p-1.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 shrink-0">
+              <component :is="getCategoryIcon(result.type)" class="h-4 w-4" />
+            </div>
+            <div class="min-w-0">
+              <p class="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                {{ result.title }}
+              </p>
+              <p class="text-xs text-zinc-400 dark:text-zinc-500 truncate">
+                {{ result.subtitle }}
+              </p>
+            </div>
+          </div>
+          <ImsChevronRightIcon
+            :class="[
+              'h-3.5 w-3.5 text-zinc-400 shrink-0',
+              activeIndex === idx ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+            ]"
+          />
+        </Link>
+      </div>
+
+      <div v-else-if="!isLoading" class="px-4 py-8 text-center text-xs text-zinc-400 dark:text-zinc-500">
+        No matching results found for "{{ searchQuery }}".
+      </div>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Components/NotificationDropdown.vue">
+<script setup>
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { usePage, Link, router } from '@inertiajs/vue3'
+import {
+  ImsBellIcon,
+  ImsCheckDoubleIcon,
+  ImsRefreshIcon,
+  ImsCloseIcon,
+  ImsArrowUpRightIcon,
+  ImsStatusDangerIcon,
+  ImsStatusWarningIcon,
+  ImsStatusSuccessIcon,
+  ImsStatusInfoIcon,
+} from '@/Components/Icons/ImsIcons.vue'
+
+const page = usePage()
+const isOpen = ref(false)
+const filterTab = ref('all')
+const isRefreshing = ref(false)
+const containerRef = ref(null)
+
+let pollInterval = null
+
+const notifications = computed(() => page.props.notifications || [])
+
+const unreadCount = computed(() => {
+  return notifications.value.filter((n) => !n.read_at).length
+})
+
+const filteredNotifications = computed(() => {
+  if (filterTab.value === 'unread') {
+    return notifications.value.filter((n) => !n.read_at)
+  }
+  return notifications.value
+})
+
+const isToday = (item) => {
+  if (item.created_at) {
+    const d = new Date(item.created_at)
+    const now = new Date()
+    return (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    )
+  }
+  const human = (item.created_at_human || '').toLowerCase()
+  return (
+    human.includes('just now') ||
+    human.includes('second') ||
+    human.includes('minute') ||
+    human.includes('hour') ||
+    /^\d+[smh]$/.test(human.trim())
+  )
+}
+
+const groupedNotifications = computed(() => {
+  const newItems = []
+  const todayItems = []
+  const earlierItems = []
+
+  for (const item of filteredNotifications.value) {
+    if (!item.read_at) {
+      newItems.push(item)
+    } else if (isToday(item)) {
+      todayItems.push(item)
+    } else {
+      earlierItems.push(item)
+    }
+  }
+
+  return [
+    { label: 'New', items: newItems },
+    { label: 'Today', items: todayItems },
+    { label: 'Earlier', items: earlierItems },
+  ].filter((group) => group.items.length > 0)
+})
+
+const refreshNotifications = () => {
+  if (isRefreshing.value) return
+  isRefreshing.value = true
+
+  router.reload({
+    only: ['notifications', 'admin_badges'],
+    preserveScroll: true,
+    preserveState: true,
+    onFinish: () => {
+      isRefreshing.value = false
+    },
+  })
+}
+
+const togglePopover = () => {
+  isOpen.value = !isOpen.value
+  if (isOpen.value) {
+    refreshNotifications()
+  }
+}
+
+const markAsRead = (notification) => {
+  if (!notification.read_at) {
+    router.post(
+      `/notifications/${notification.id}/read`,
+      {},
+      {
+        preserveScroll: true,
+        preserveState: true,
+      }
+    )
+  }
+}
+
+const markAllAsRead = () => {
+  router.post(
+    '/notifications/read-all',
+    {},
+    {
+      preserveScroll: true,
+      preserveState: true,
+    }
+  )
+}
+
+const handleClickOutside = (event) => {
+  if (containerRef.value && !containerRef.value.contains(event.target)) {
+    isOpen.value = false
+  }
+}
+
+const handleKeydown = (event) => {
+  if (event.key === 'Escape' && isOpen.value) {
+    isOpen.value = false
+  }
+}
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    refreshNotifications()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  document.addEventListener('keydown', handleKeydown)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+
+  pollInterval = setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      refreshNotifications()
+    }
+  }, 20000)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('keydown', handleKeydown)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  clearInterval(pollInterval)
+})
+
+const getTypeStyle = (type) => {
+  switch (type) {
+    case 'danger':
+      return {
+        icon: ImsStatusDangerIcon,
+        badge: 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400',
+      }
+    case 'warning':
+      return {
+        icon: ImsStatusWarningIcon,
+        badge: 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
+      }
+    case 'success':
+      return {
+        icon: ImsStatusSuccessIcon,
+        badge: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
+      }
+    default:
+      return {
+        icon: ImsStatusInfoIcon,
+        badge: 'bg-sky-500/10 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400',
+      }
+  }
+}
+</script>
+
+<template>
+  <div ref="containerRef" class="relative [&_*]:!transition-none [&_*]:!animate-none">
+    <button
+      @click="togglePopover"
+      title="Notifications"
+      aria-label="Notifications"
+      class="relative flex items-center justify-center h-9 w-9 rounded-md text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 border border-zinc-200 dark:border-zinc-700/80"
+    >
+      <ImsBellIcon class="h-4 w-4 text-zinc-600 dark:text-zinc-300" />
+
+      <span
+        v-if="unreadCount > 0"
+        class="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 font-mono text-xs font-semibold text-white ring-2 ring-white dark:ring-zinc-900"
+      >
+        {{ unreadCount > 9 ? '9+' : unreadCount }}
+      </span>
+    </button>
+
+    <div
+      v-if="isOpen"
+      class="fixed right-4 top-14 w-96 max-w-[calc(100vw-2rem)] rounded-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-lg z-50 overflow-hidden text-zinc-800 dark:text-zinc-200"
+    >
+      <div class="px-4 pt-3.5 pb-2 flex items-center justify-between">
+        <span class="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+          Notifications
+        </span>
+
+        <div class="flex items-center gap-2.5">
+          <button
+            v-if="unreadCount > 0"
+            @click="markAllAsRead"
+            title="Mark all as read"
+            class="flex items-center gap-1 text-xs font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+          >
+            <ImsCheckDoubleIcon class="h-3.5 w-3.5" />
+            <span>Read all</span>
+          </button>
+
+          <button
+            @click="refreshNotifications"
+            :disabled="isRefreshing"
+            title="Refresh"
+            class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-40"
+          >
+            <ImsRefreshIcon class="h-3.5 w-3.5" />
+          </button>
+
+          <button
+            @click="isOpen = false"
+            aria-label="Close notifications"
+            class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+          >
+            <ImsCloseIcon class="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1 px-4 pb-2">
+        <button
+          @click="filterTab = 'all'"
+          class="px-2.5 py-1 rounded-md text-[13px] font-medium"
+          :class="
+            filterTab === 'all'
+              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+          "
+        >
+          All
+        </button>
+        <button
+          @click="filterTab = 'unread'"
+          class="px-2.5 py-1 rounded-md text-[13px] font-medium flex items-center gap-1.5"
+          :class="
+            filterTab === 'unread'
+              ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+          "
+        >
+          <span>Unread</span>
+          <span
+            v-if="unreadCount > 0"
+            class="font-mono text-xs px-1 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400"
+            :class="{ '!bg-rose-500 !text-white': filterTab === 'unread' }"
+          >
+            {{ unreadCount }}
+          </span>
+        </button>
+      </div>
+
+      <div class="max-h-[480px] overflow-y-auto px-1.5 pb-2 space-y-3">
+        <div v-for="group in groupedNotifications" :key="group.label" class="space-y-0.5">
+          <div class="px-3 pt-1 pb-0.5 flex items-center justify-between">
+            <span class="text-xs font-medium text-zinc-400 dark:text-zinc-500">
+              {{ group.label }}
+            </span>
+          </div>
+
+          <div
+            v-for="item in group.items"
+            :key="item.id"
+            @click="markAsRead(item)"
+            class="flex items-start gap-2.5 px-3 py-2.5 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer"
+          >
+            <div :class="['p-1.5 rounded-md shrink-0 mt-0.5', getTypeStyle(item.type).badge]">
+              <component :is="getTypeStyle(item.type).icon" class="h-3.5 w-3.5" />
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span v-if="!item.read_at" class="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+                  <p class="text-[13px] font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                    {{ item.title }}
+                  </p>
+                </div>
+                <span class="font-mono text-xs text-zinc-400 dark:text-zinc-500 shrink-0">
+                  {{ item.created_at_human }}
+                </span>
+              </div>
+
+              <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
+                {{ item.message }}
+              </p>
+
+              <Link
+                v-if="item.link"
+                :href="item.link"
+                @click.stop="isOpen = false; markAsRead(item)"
+                class="inline-flex items-center gap-1 text-xs font-medium text-sky-600 dark:text-sky-400 hover:underline mt-1.5"
+              >
+                <span>Open</span>
+                <ImsArrowUpRightIcon class="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="groupedNotifications.length === 0"
+          class="px-4 py-12 text-center text-xs text-zinc-400 dark:text-zinc-500"
+        >
+          No {{ filterTab === 'unread' ? 'unread' : '' }} notifications.
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Components/RecentActivities.vue">
+<script setup>
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { usePage, Link, router } from '@inertiajs/vue3'
+import {
+  ImsActivityClockIcon,
+  ImsRefreshIcon,
+  ImsCloseIcon,
+} from '@/Components/Icons/ImsIcons.vue'
+
+const page = usePage()
+const recentActivities = computed(() => page.props.recent_activities || [])
+
+const isRecentOpen = ref(false)
+const isRefreshing = ref(false)
+const lastSeenId = ref(null)
+const containerRef = ref(null)
+
+let pollInterval = null
+
+const latestId = computed(() => recentActivities.value[0]?.id ?? null)
+
+const hasNewActivity = computed(() => {
+  if (!latestId.value || lastSeenId.value === null) return false
+  return latestId.value > lastSeenId.value
+})
+
+const refreshActivities = () => {
+  if (isRefreshing.value) return
+  isRefreshing.value = true
+
+  router.reload({
+    only: ['recent_activities'],
+    preserveScroll: true,
+    preserveState: true,
+    onFinish: () => {
+      isRefreshing.value = false
+      if (isRecentOpen.value && latestId.value) {
+        lastSeenId.value = latestId.value
+      }
+    },
+  })
+}
+
+const togglePopover = () => {
+  isRecentOpen.value = !isRecentOpen.value
+  if (isRecentOpen.value) {
+    if (latestId.value) {
+      lastSeenId.value = latestId.value
+    }
+    refreshActivities()
+  }
+}
+
+watch(
+  latestId,
+  (val) => {
+    if (lastSeenId.value === null && val) {
+      lastSeenId.value = val
+    }
+  },
+  { immediate: true }
+)
+
+const handleClickOutside = (event) => {
+  if (containerRef.value && !containerRef.value.contains(event.target)) {
+    isRecentOpen.value = false
+  }
+}
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    refreshActivities()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+
+  pollInterval = setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      refreshActivities()
+    }
+  }, 20000)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  clearInterval(pollInterval)
+})
+</script>
+
+<template>
+  <div ref="containerRef" class="relative [&_*]:!transition-none">
+    <button
+      @click="togglePopover"
+      title="Recent Activities"
+      aria-label="Recent Activities"
+      class="relative flex items-center justify-center h-9 w-9 rounded-md text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 border border-zinc-200 dark:border-zinc-700/80"
+    >
+      <ImsActivityClockIcon class="h-4 w-4 text-zinc-600 dark:text-zinc-300" />
+
+      <span
+        v-if="hasNewActivity"
+        class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900"
+      />
+    </button>
+
+    <div
+      v-if="isRecentOpen"
+      class="absolute left-0 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-lg z-50 overflow-hidden text-zinc-800 dark:text-zinc-200"
+    >
+      <div class="flex items-center justify-between px-4 pt-3.5 pb-2">
+        <span class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+          Recent Activities
+        </span>
+        <div class="flex items-center gap-2">
+          <button
+            @click="refreshActivities"
+            :disabled="isRefreshing"
+            title="Refresh"
+            class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 disabled:opacity-40"
+          >
+            <ImsRefreshIcon class="h-3.5 w-3.5" />
+          </button>
+          <button
+            @click="isRecentOpen = false"
+            title="Close"
+            class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+          >
+            <ImsCloseIcon class="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div class="max-h-80 overflow-y-auto px-1.5 pb-2 space-y-0.5">
+        <Link
+          v-for="activity in recentActivities"
+          :key="activity.id"
+          :href="activity.href || '/inventory/movements'"
+          @click="isRecentOpen = false"
+          class="flex items-start justify-between gap-3 px-3 py-2.5 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+        >
+          <div class="min-w-0 flex-1">
+            <p class="text-[13px] font-medium text-zinc-900 dark:text-zinc-100">
+              {{ activity.description || activity.title }}
+            </p>
+            <div class="flex items-center justify-between mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+              <span>{{ activity.user_name || 'System' }}</span>
+              <span class="font-mono">{{ activity.time || activity.created_at_human }}</span>
+            </div>
+          </div>
+
+          <span
+            v-if="activity.quantity"
+            :class="[
+              'font-mono text-xs font-medium shrink-0',
+              activity.type === 'in'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-rose-600 dark:text-rose-400',
+            ]"
+          >
+            {{ activity.type === 'in' ? '+' : '-' }}{{ activity.quantity }}
+          </span>
+        </Link>
+
+        <div
+          v-if="recentActivities.length === 0"
+          class="px-4 py-8 text-center text-xs text-zinc-400 dark:text-zinc-500"
+        >
+          No recent activity logged.
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+</file>
+
+<file path="resources/js/Layouts/AdminLayout.vue">
+<script setup>
+import { ref, computed } from 'vue'
+import { Link, usePage } from '@inertiajs/vue3'
+import Logo from '@/Components/Logo.vue'
+import RecentActivities from '@/Components/RecentActivities.vue'
+import GlobalSearch from '@/Components/GlobalSearch.vue'
+import NotificationDropdown from '@/Components/NotificationDropdown.vue'
+import UserMenu from '@/Components/UserMenu.vue'
+import {
+  ImsDashboardIcon,
+  ImsInventoryIcon,
+  ImsAlertsIcon,
+  ImsInquiriesIcon,
+  ImsAnnouncementsIcon,
+  ImsUsersIcon,
+  ImsChevronDownIcon,
+} from '@/Components/Icons/ImsIcons.vue'
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarTrigger,
+  SidebarInset
+} from '@/Components/ui/sidebar'
+
+const page = usePage()
+const openMenus = ref({
+  Inventory: true,
+})
+
+const toggleMenu = (name) => {
+  openMenus.value[name] = !openMenus.value[name]
+}
+
+const adminBadges = computed(() => page.props.admin_badges || { unresolved_alerts: 0, new_inquiries: 0 })
+
+const navGroups = [
+  {
+    label: 'Management',
+    items: [
+      { name: 'Dashboard', href: '/dashboard', icon: ImsDashboardIcon },
+      {
+        name: 'Inventory',
+        href: '/inventory',
+        icon: ImsInventoryIcon,
+        children: [
+          { name: 'Stock Inventory', href: '/inventory' },
+          { name: 'Movement Logs', href: '/inventory/movements' },
+          { name: 'Categories', href: '/categories' },
+          { name: 'Brands', href: '/brands' },
+          { name: 'Tags', href: '/tags' },
+        ],
+      },
+      { name: 'Alerts', href: '/inventory/alerts', icon: ImsAlertsIcon, badgeKey: 'unresolved_alerts' },
+      { name: 'Inquiries', href: '/inquiries', icon: ImsInquiriesIcon, badgeKey: 'new_inquiries' },
+      { name: 'Announcements', href: '/announcements', icon: ImsAnnouncementsIcon },
+      { name: 'Users', href: '/users', icon: ImsUsersIcon },
+    ]
+  }
+]
+
+const getCurrentPath = () => page.url.split('?')[0]
+
+const isChildActive = (child) => {
+  const currentPath = getCurrentPath()
+
+  if (child.href === '/inventory') {
+    return currentPath === '/inventory' || currentPath.startsWith('/products')
+  }
+
+  return currentPath === child.href || currentPath.startsWith(`${child.href}/`)
+}
+
+const isItemActive = (item) => {
+  const currentPath = getCurrentPath()
+
+  if (item.children) {
+    return item.children.some((child) => isChildActive(child))
+  }
+
+  return currentPath === item.href || currentPath.startsWith(`${item.href}/`)
+}
+</script>
+
+<template>
+  <SidebarProvider>
+    <div
+      class="flex h-screen w-full overflow-hidden bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100">
+      <Sidebar collapsible="icon" class="border-r border-slate-200 dark:border-zinc-800 dark:bg-zinc-900 !transition-none">
+        <div
+          class="flex h-14 items-center px-4 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center shrink-0">
+          <Link href="/dashboard"
+            class="flex items-center gap-2 hover:opacity-90 overflow-hidden group-data-[collapsible=icon]:hidden">
+            <Logo class="h-8 w-auto shrink-0" />
+          </Link>
+        </div>
+
+        <SidebarContent
+          class="dark:bg-zinc-900 px-2 group-data-[collapsible=icon]:px-1.5 py-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+          <SidebarGroup v-for="group in navGroups" :key="group.label" class="group-data-[collapsible=icon]:px-0">
+            <SidebarGroupLabel
+              class="text-slate-400 dark:text-zinc-500 font-semibold text-xs tracking-wider uppercase px-3 mb-2 group-data-[collapsible=icon]:hidden">
+              {{ group.label }}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu class="space-y-1">
+                <SidebarMenuItem v-for="item in group.items" :key="item.name">
+                  <template v-if="item.children">
+                    <SidebarMenuButton :is-active="isItemActive(item)" class="rounded-md !transition-none"
+                      :class="[
+                        isItemActive(item)
+                          ? 'text-slate-900 dark:text-zinc-100 font-semibold hover:!bg-slate-100 dark:hover:!bg-zinc-800/60'
+                          : 'text-slate-600 hover:!bg-slate-100 hover:!text-slate-900 dark:text-zinc-400 dark:hover:!bg-zinc-800/60 dark:hover:!text-zinc-100'
+                      ]">
+                      <div :title="item.name"
+                        class="flex items-center justify-between w-full px-3 py-2 text-[13px] font-medium tracking-tight group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
+                        <Link :href="item.href" @click="openMenus[item.name] = true"
+                          class="flex flex-1 items-center gap-3 min-w-0 group-data-[collapsible=icon]:flex-initial group-data-[collapsible=icon]:justify-center">
+                          <component :is="item.icon" class="h-4 w-4 shrink-0 text-slate-900 dark:text-zinc-100" />
+                          <span class="truncate group-data-[collapsible=icon]:hidden">{{ item.name }}</span>
+                        </Link>
+
+                        <button type="button" @click.stop="toggleMenu(item.name)"
+                          :aria-expanded="Boolean(openMenus[item.name])" :aria-label="`Toggle ${item.name} submenu`"
+                          class="p-0.5 rounded text-slate-900 dark:text-zinc-100 group-data-[collapsible=icon]:hidden">
+                          <ImsChevronDownIcon class="h-3.5 w-3.5"
+                            :class="openMenus[item.name] ? 'rotate-0' : '-rotate-90'" />
+                        </button>
+                      </div>
+                    </SidebarMenuButton>
+
+                    <div v-show="openMenus[item.name]"
+                      class="ml-5 mt-1 pl-2.5 space-y-0.5 group-data-[collapsible=icon]:hidden">
+                      <Link v-for="child in item.children" :key="child.name" :href="child.href"
+                        class="flex items-center rounded-md px-2.5 py-1.5 text-[13px] tracking-tight"
+                        :class="[
+                          isChildActive(child)
+                            ? 'bg-zinc-200/90 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100 font-semibold'
+                            : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-100 font-medium'
+                        ]">
+                        {{ child.name }}
+                      </Link>
+                    </div>
+                  </template>
+
+                  <SidebarMenuButton v-else :is-active="isItemActive(item)"
+                    class="rounded-md !transition-none" :class="[
+                      isItemActive(item)
+                        ? '!bg-slate-200 !text-slate-900 dark:!bg-zinc-800 dark:!text-zinc-100 font-semibold'
+                        : 'text-slate-600 hover:!bg-slate-100 hover:!text-slate-900 dark:text-zinc-400 dark:hover:!bg-zinc-800/60 dark:hover:!text-zinc-100'
+                    ]">
+                    <Link :href="item.href" :title="item.name"
+                      class="flex items-center justify-between gap-2 px-3 py-2 text-[13px] font-medium tracking-tight group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
+                      <span class="flex items-center gap-3 min-w-0 group-data-[collapsible=icon]:justify-center">
+                        <component :is="item.icon" class="h-4 w-4 shrink-0 !text-slate-900 dark:!text-zinc-100" />
+                        <span class="truncate group-data-[collapsible=icon]:hidden">{{ item.name }}</span>
+                      </span>
+
+                      <span v-if="item.badgeKey && adminBadges[item.badgeKey] > 0"
+                        class="font-mono text-xs font-semibold px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 dark:bg-zinc-800 dark:text-zinc-200 group-data-[collapsible=icon]:hidden">
+                        {{ adminBadges[item.badgeKey] > 99 ? '99+' : adminBadges[item.badgeKey] }}
+                      </span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+        <div
+          class="mt-auto flex items-center justify-end p-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 shrink-0">
+          <SidebarTrigger
+            class="hidden md:inline-flex shrink-0 border-0 bg-transparent hover:bg-transparent !text-slate-900 dark:!text-zinc-100" />
+        </div>
+      </Sidebar>
+
+      <SidebarInset class="flex flex-col flex-1 h-screen overflow-hidden dark:bg-zinc-950 !transition-none">
+        <header
+          class="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-6 relative z-50">
+          <div class="flex items-center gap-3">
+            <SidebarTrigger class="md:hidden !text-slate-900 dark:!text-zinc-100" />
+            <RecentActivities />
+            <GlobalSearch />
+          </div>
+
+          <div class="flex items-center gap-2 sm:gap-3">
+            <NotificationDropdown />
+            <UserMenu />
+          </div>
+        </header>
+
+        <main
+          class="flex-1 overflow-y-auto p-6 md:p-8 [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+          <slot />
+        </main>
+      </SidebarInset>
+    </div>
+  </SidebarProvider>
+</template>
+</file>
+
+</files>

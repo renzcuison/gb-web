@@ -1,24 +1,24 @@
 <script setup>
-import { Package, Check } from 'lucide-vue-next'
+import { ImsInventoryIcon, ImsCheckIcon } from '@/Components/Icons/ImsIcons.vue'
 import { Input } from '@/Components/ui/input'
 
 const props = defineProps({
   form: {
     type: Object,
-    required: true
+    required: true,
   },
   categories: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   brands: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   tags: {
     type: Array,
-    default: () => []
-  }
+    default: () => [],
+  },
 })
 
 const toggleTag = (tagId) => {
@@ -35,7 +35,7 @@ const toggleTag = (tagId) => {
   <div class="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-6">
     <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-zinc-800">
       <div class="flex items-center gap-2">
-        <Package class="h-5 w-5 text-slate-500 dark:text-zinc-400" />
+        <ImsInventoryIcon class="h-5 w-5 text-slate-500 dark:text-zinc-400" />
         <h2 class="text-base font-semibold text-slate-900 dark:text-zinc-100">General Information</h2>
       </div>
 
@@ -153,7 +153,7 @@ const toggleTag = (tagId) => {
               color: tag.color_code || '#64748b'
             }"
           >
-            <Check v-if="form.tags.includes(tag.id)" class="h-3 w-3 shrink-0" />
+            <ImsCheckIcon v-if="form.tags.includes(tag.id)" class="h-3 w-3 shrink-0" />
             <span>{{ tag.name }}</span>
           </button>
         </div>

@@ -3,7 +3,12 @@ import { ref, computed, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { Button } from '@/Components/ui/button'
 import { Input } from '@/Components/ui/input'
-import { Search, X, ChevronDown, Check } from 'lucide-vue-next'
+import {
+  ImsSearchIcon,
+  ImsCloseIcon,
+  ImsChevronDownIcon,
+  ImsCheckIcon,
+} from '@/Components/Icons/ImsIcons.vue'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -106,35 +111,47 @@ const resetAll = () => {
   <div class="space-y-3">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
       <div class="relative flex-1 max-w-xs">
-        <Search
+        <ImsSearchIcon
           class="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-        <Input v-model="search" type="text" placeholder="Search item or SKU..."
+        <Input
+          v-model="search"
+          type="text"
+          placeholder="Search item or SKU..."
           class="h-8 pl-8 pr-7 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:ring-1 shadow-none" />
-        <button v-if="search" type="button" @click="search = ''"
+        <button
+          v-if="search"
+          type="button"
+          @click="search = ''"
           class="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300">
-          <X class="h-3.5 w-3.5" />
+          <ImsCloseIcon class="h-3.5 w-3.5" />
         </button>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
-            <Button variant="outline" size="sm" :class="[
-              'h-8 text-xs font-medium gap-1.5 px-2.5 shadow-none bg-white dark:bg-zinc-900',
-              category
-                ? 'border-zinc-900 text-zinc-900 dark:border-zinc-200 dark:text-zinc-100'
-                : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300',
-            ]">
+            <Button
+              variant="outline"
+              size="sm"
+              :class="[
+                'h-8 text-xs font-medium gap-1.5 px-2.5 shadow-none bg-white dark:bg-zinc-900',
+                category
+                  ? 'border-zinc-900 text-zinc-900 dark:border-zinc-200 dark:text-zinc-100'
+                  : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300',
+              ]">
               <span>{{ selectedCategoryName }}</span>
-              <ChevronDown class="h-3 w-3 opacity-60" />
+              <ImsChevronDownIcon class="h-3 w-3 opacity-60" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" class="w-44 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
             <template v-if="categories.length > 0">
-              <DropdownMenuItem v-for="cat in categories" :key="cat.id" @click="toggleCategory(cat.id)"
+              <DropdownMenuItem
+                v-for="cat in categories"
+                :key="cat.id"
+                @click="toggleCategory(cat.id)"
                 class="text-xs flex items-center justify-between cursor-pointer">
                 <span>{{ cat.name }}</span>
-                <Check v-if="category === cat.id" class="h-3.5 w-3.5" />
+                <ImsCheckIcon v-if="category === cat.id" class="h-3.5 w-3.5" />
               </DropdownMenuItem>
             </template>
             <div v-else class="px-2.5 py-2 text-xs text-zinc-400 dark:text-zinc-500">
@@ -145,22 +162,28 @@ const resetAll = () => {
 
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
-            <Button variant="outline" size="sm" :class="[
-              'h-8 text-xs font-medium gap-1.5 px-2.5 shadow-none bg-white dark:bg-zinc-900',
-              brand
-                ? 'border-zinc-900 text-zinc-900 dark:border-zinc-200 dark:text-zinc-100'
-                : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300',
-            ]">
+            <Button
+              variant="outline"
+              size="sm"
+              :class="[
+                'h-8 text-xs font-medium gap-1.5 px-2.5 shadow-none bg-white dark:bg-zinc-900',
+                brand
+                  ? 'border-zinc-900 text-zinc-900 dark:border-zinc-200 dark:text-zinc-100'
+                  : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300',
+              ]">
               <span>{{ selectedBrandName }}</span>
-              <ChevronDown class="h-3 w-3 opacity-60" />
+              <ImsChevronDownIcon class="h-3 w-3 opacity-60" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" class="w-44 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
             <template v-if="brands.length > 0">
-              <DropdownMenuItem v-for="b in brands" :key="b.id" @click="toggleBrand(b.id)"
+              <DropdownMenuItem
+                v-for="b in brands"
+                :key="b.id"
+                @click="toggleBrand(b.id)"
                 class="text-xs flex items-center justify-between cursor-pointer">
                 <span>{{ b.name }}</span>
-                <Check v-if="brand === b.id" class="h-3.5 w-3.5" />
+                <ImsCheckIcon v-if="brand === b.id" class="h-3.5 w-3.5" />
               </DropdownMenuItem>
             </template>
             <div v-else class="px-2.5 py-2 text-xs text-zinc-400 dark:text-zinc-500">
@@ -171,22 +194,30 @@ const resetAll = () => {
 
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
-            <Button variant="outline" size="sm"
+            <Button
+              variant="outline"
+              size="sm"
               class="h-8 text-xs font-medium gap-1.5 px-2.5 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 shadow-none">
               <span>{{ currentSortLabel }}</span>
-              <ChevronDown class="h-3 w-3 opacity-60" />
+              <ImsChevronDownIcon class="h-3 w-3 opacity-60" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" class="w-40 dark:bg-zinc-900 dark:border-zinc-800 shadow-none">
-            <DropdownMenuItem v-for="opt in sortOptions" :key="opt.value" @click="setSort(opt.value)"
+            <DropdownMenuItem
+              v-for="opt in sortOptions"
+              :key="opt.value"
+              @click="setSort(opt.value)"
               class="text-xs flex items-center justify-between cursor-pointer">
               <span>{{ opt.label }}</span>
-              <Check v-if="sort === opt.value" class="h-3.5 w-3.5" />
+              <ImsCheckIcon v-if="sort === opt.value" class="h-3.5 w-3.5" />
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <button v-if="hasActiveFilters" type="button" @click="resetAll"
+        <button
+          v-if="hasActiveFilters"
+          type="button"
+          @click="resetAll"
           class="text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-1.5">
           Reset
         </button>
@@ -194,14 +225,19 @@ const resetAll = () => {
     </div>
 
     <div class="flex items-center gap-6 border-b border-zinc-200 dark:border-zinc-800 text-xs">
-      <button v-for="tab in statusTabs" :key="tab.key" type="button" @click="setStatus(tab.key)" :class="[
-        '-mb-px pb-2.5 border-b-2 transition-colors flex items-center gap-1.5',
-        status === tab.key
-          ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-medium'
-          : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200',
-      ]">
+      <button
+        v-for="tab in statusTabs"
+        :key="tab.key"
+        type="button"
+        @click="setStatus(tab.key)"
+        :class="[
+          '-mb-px pb-2.5 border-b-2 transition-colors flex items-center gap-1.5',
+          status === tab.key
+            ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 font-medium'
+            : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200',
+        ]">
         <span>{{ tab.label }}</span>
-        <span class="font-mono text-[11px] text-zinc-400">{{ tab.count }}</span>
+        <span class="font-mono text-xs text-zinc-400">{{ tab.count }}</span>
       </button>
     </div>
   </div>

@@ -1,6 +1,6 @@
 <script setup>
 import { inject } from 'vue'
-import { PanelLeft } from 'lucide-vue-next'
+import { ImsSidebarPanelIcon } from '@/Components/Icons/ImsIcons.vue'
 
 const sidebar = inject('sidebar')
 </script>
@@ -10,8 +10,8 @@ const sidebar = inject('sidebar')
     @click="sidebar.toggleSidebar"
     type="button"
     aria-label="Toggle sidebar"
-    class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 transition-colors"
+    class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 dark:border-zinc-800 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 !transition-none"
   >
-    <PanelLeft class="h-4 w-4" />
+    <ImsSidebarPanelIcon class="h-4 w-4" />
   </button>
 </template>

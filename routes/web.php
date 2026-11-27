@@ -17,6 +17,7 @@ use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\StorefrontSearchController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,79 +44,9 @@ Route::get('auth/{provider}/redirect', [SocialAuthController::class, 'redirect']
 Route::get('auth/{provider}/callback', [SocialAuthController::class, 'callback'])
     ->name('social.callback');
 
-Route::get('/dashboard', function (Request $request) {
-    if ($request->user()->role === 'admin') {
-        $stats = [
-            'totalItems' => ProductVariant::count(),
-            'archivedItems' => ProductVariant::onlyTrashed()->count(),
-            'outOfStockCount' => ProductVariant::where('stock_qty', '<=', 0)->count(),
-            'lowStockCount' => ProductVariant::where('stock_qty', '>', 0)
-                ->whereColumn('stock_qty', '<=', 'low_stock_threshold')
-                ->count(),
-            'newInquiriesCount' => Inquiry::where('status', Inquiry::STATUS_NEW)->count(),
-            'activeAnnouncements' => Announcement::where('is_active', true)->count(),
-            'totalValue' => ProductVariant::join('products', 'product_variants.product_id', '=', 'products.id')
-                ->sum(DB::raw('stock_qty * COALESCE(product_variants.price_override, products.price, 0)')),
-        ];
-
-        $outOfStockItems = ProductVariant::with('product:id,name')
-            ->where('stock_qty', '<=', 0)
-            ->latest('updated_at')
-            ->take(3)
-            ->get(['id', 'product_id', 'sku', 'variant_label', 'stock_qty', 'updated_at']);
-
-        $lowStockItems = ProductVariant::with('product:id,name')
-            ->where('stock_qty', '>', 0)
-            ->whereColumn('stock_qty', '<=', 'low_stock_threshold')
-            ->orderBy('stock_qty')
-            ->take(3)
-            ->get(['id', 'product_id', 'sku', 'variant_label', 'stock_qty', 'low_stock_threshold']);
-
-        $recentAlerts = InventoryAlert::with('productVariant.product')
-            ->where('is_resolved', false)
-            ->latest()
-            ->take(6)
-            ->get();
-
-        $recentMovements = InventoryMovement::with(['variant.product', 'user'])
-            ->latest()
-            ->take(6)
-            ->get();
-
-        $topStockedItems = ProductVariant::with('product')
-            ->orderByDesc('stock_qty')
-            ->take(5)
-            ->get();
-
-        $activeAnnouncementsList = Announcement::where('is_active', true)
-            ->orderByDesc('priority')
-            ->latest()
-            ->take(5)
-            ->get();
-
-        $recentInquiries = Inquiry::with([
-            'product:id,name,slug',
-            'variant:id,sku,variant_label',
-        ])
-            ->whereIn('status', [Inquiry::STATUS_NEW, Inquiry::STATUS_CONTACTED])
-            ->latest()
-            ->take(5)
-            ->get();
-
-        return Inertia::render('Admin/Dashboard', [
-            'stats' => $stats,
-            'outOfStockItems' => $outOfStockItems,
-            'lowStockItems' => $lowStockItems,
-            'recentAlerts' => $recentAlerts,
-            'recentMovements' => $recentMovements,
-            'topStockedItems' => $topStockedItems,
-            'activeAnnouncementsList' => $activeAnnouncementsList,
-            'recentInquiries' => $recentInquiries,
-        ]);
-    }
-
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', DashboardController::class)
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
